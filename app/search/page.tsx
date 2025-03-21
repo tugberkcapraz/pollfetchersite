@@ -107,11 +107,18 @@ export default function SearchPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {data.map((surveyData, index) => (
-                <DynamicChart key={index} data={surveyData} index={index} />
-              ))}
-            </div>
+            <>
+              <div className="mb-6">
+                <p className="text-elegant-gray-light">
+                  Found {data.length} results for "{query}"
+                </p>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {data.map((surveyData, index) => (
+                  <DynamicChart key={index} data={surveyData} index={index} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -3,16 +3,17 @@
 import { useState, useEffect } from "react"
 
 export interface SurveyData {
+  survey_Title?: string
   survey_XValue: string[]
-  survey_XLabel: string
   survey_YValue: number[]
-  survey_YLabel: string
-  survey_Hue: string[]
-  survey_Title: string
-  survey_Explanation: string
-  survey_SurveySource: string
-  survey_SurveyCustomer: string
-  survey_SurveyYear: number
+  survey_XLabel?: string
+  survey_YLabel?: string
+  survey_Explanation?: string
+  survey_SurveySource?: string
+  survey_SurveyYear?: string
+  survey_ChartType?: 'bar' | 'pie'
+  survey_URL?: string
+  survey_SourceCountry?: string
 }
 
 // This function simulates fetching data from an API or database
@@ -34,7 +35,7 @@ export async function fetchSurveyData(query?: string): Promise<SurveyData[]> {
         "The growth of agricultural machinery exports from Shuangfeng county, Hunan province, China. The county has seen significant growth in the agricultural machinery sector, driven by innovation and the development of machines suitable for hilly terrain. Exports have increased substantially, particularly to Africa.",
       survey_SurveySource: "Shuangfeng agricultural machinery affairs center",
       survey_SurveyCustomer: "Shuangfeng agricultural machinery affairs center",
-      survey_SurveyYear: 2023,
+      survey_SurveyYear: "2023",
     },
     {
       survey_XValue: [
@@ -53,7 +54,7 @@ export async function fetchSurveyData(query?: string): Promise<SurveyData[]> {
         "Survey of German companies operating in China, focusing on localization strategies, investment plans, and views on Chinese competition.",
       survey_SurveySource: "German Chamber of Commerce in China",
       survey_SurveyCustomer: "German Chamber of Commerce in China",
-      survey_SurveyYear: 2024,
+      survey_SurveyYear: "2024",
     },
     {
       survey_XValue: ["Very Satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very Dissatisfied"],
@@ -66,7 +67,7 @@ export async function fetchSurveyData(query?: string): Promise<SurveyData[]> {
         "Results from our annual customer satisfaction survey showing overall positive feedback with 77% of customers reporting satisfaction with our services.",
       survey_SurveySource: "Internal Customer Relations Department",
       survey_SurveyCustomer: "Global Customer Base",
-      survey_SurveyYear: 2024,
+      survey_SurveyYear: "2024",
     },
     {
       survey_XValue: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"],
@@ -79,7 +80,7 @@ export async function fetchSurveyData(query?: string): Promise<SurveyData[]> {
         "Age distribution of users on our platform showing a concentration in the 25-44 age range, which accounts for 65% of our user base.",
       survey_SurveySource: "Platform Analytics Team",
       survey_SurveyCustomer: "Marketing Department",
-      survey_SurveyYear: 2024,
+      survey_SurveyYear: "2024",
     },
   ]
 }
@@ -90,20 +91,54 @@ export function useSurveyData(query?: string) {
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    fetchSurveyData(query)
-      .then((fetchedData) => {
-        if (Array.isArray(fetchedData) && fetchedData.length > 0) {
-          setData(fetchedData)
-        } else {
-          throw new Error("No data available")
+    const fetchData = async () => {
+      if (!query) {
+        setLoading(false)
+        setData([])
+        return
+      }
+
+      try {
+        setLoading(true)
+        
+        // Call our API endpoint
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`)
         }
-      })
-      .catch((err) => {
-        console.error("Error fetching survey data:", err)
-        setError(err)
-      })
-      .finally(() => setLoading(false))
+        
+        const result = await response.json()
+        
+        if (!result.polls || !Array.isArray(result.polls)) {
+          throw new Error('Invalid response format')
+        }
+        
+        // Transform the data to match our SurveyData interface
+        const transformedData: SurveyData[] = result.polls.map(poll => ({
+          survey_Title: poll.chartdata.Title,
+          survey_XValue: poll.chartdata.XValue,
+          survey_YValue: poll.chartdata.YValue,
+          survey_XLabel: poll.chartdata.XLabel,
+          survey_YLabel: poll.chartdata.YLabel,
+          survey_Explanation: poll.chartdata.Explanation,
+          survey_SurveySource: poll.chartdata.SurveySource,
+          survey_SurveyYear: poll.chartdata.SurveyYear,
+          survey_ChartType: 'bar', // Default to bar, you can determine this based on data
+          survey_URL: poll.url,
+          survey_SourceCountry: poll.sourcecountry
+        }))
+        
+        setData(transformedData)
+      } catch (err) {
+        console.error('Error fetching data:', err)
+        setError(err instanceof Error ? err : new Error('Unknown error occurred'))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [query])
 
   return { data, loading, error }

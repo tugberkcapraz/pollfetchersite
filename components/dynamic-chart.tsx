@@ -2,9 +2,12 @@
 
 import { useRef } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts"
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChartContainer } from "@/components/ui/chart"
 import type { SurveyData } from "@/lib/getData"
 import { motion, useInView } from "framer-motion"
+import Link from "next/link"
+import { ExternalLink } from "lucide-react"
 
 interface DynamicChartProps {
   data: SurveyData
@@ -12,120 +15,120 @@ interface DynamicChartProps {
 }
 
 export function DynamicChart({ data, index }: DynamicChartProps) {
-  const chartRef = useRef(null)
-  const isInView = useInView(chartRef, { once: true, amount: 0.2 })
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, amount: 0.2 })
 
-  if (
-    !data ||
-    !data.survey_XValue ||
-    !data.survey_YValue ||
-    data.survey_XValue.length === 0 ||
-    data.survey_YValue.length === 0
-  ) {
-    return (
-      <div className="elegant-card p-6">
-        <h3 className="text-xl font-display font-semibold mb-3">No Data Available</h3>
-        <p className="text-elegant-gray-light">There is no data to display for this chart.</p>
-      </div>
-    )
-  }
-
-  const chartData = data.survey_XValue.map((x, index) => ({
-    name: x,
-    value: data.survey_YValue[index] || 0,
+  // Prepare data for chart
+  const chartData = data.survey_XValue.map((label, i) => ({
+    name: label,
+    value: data.survey_YValue[i] || 0,
   }))
 
-  // Create a config object for ChartContainer
-  const chartConfig = chartData.reduce(
-    (acc, item, index) => {
-      acc[`value${index}`] = {
-        label: item.name,
-        color: `hsl(var(--chart-${(index % 5) + 1}))`,
-      }
-      return acc
-    },
-    {} as Record<string, { label: string; color: string }>,
-  )
+  // Define chart colors
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))']
 
-  // Add a default value entry if the config is empty
-  if (Object.keys(chartConfig).length === 0) {
-    chartConfig.value = {
-      label: "Value",
-      color: "hsl(var(--chart-1))",
-    }
-  }
-
-  const renderChart = () => {
-    if (data.survey_XValue.length <= 5) {
-      return (
-        <PieChart
-          width={300}
-          height={300}
-          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-          className="glow-effect mx-auto"
-        >
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={80}
-            label
-            labelLine={true}
-          >
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
-            ))}
-          </Pie>
-          <Tooltip content={<ChartTooltipContent />} />
-        </PieChart>
-      )
-    } else {
-      return (
-        <BarChart data={chartData} className="glow-effect" margin={{ top: 20, right: 30, bottom: 50, left: 30 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-          <XAxis dataKey="name" tick={{ fill: "#F8F5E6" }} height={60} tickMargin={10} angle={-45} textAnchor="end" />
-          <YAxis tick={{ fill: "#F8F5E6" }} width={60} />
-          <Tooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="value">
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
-            ))}
-          </Bar>
-        </BarChart>
-      )
-    }
+  // Animation variants
+  const variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.5,
+      },
+    }),
   }
 
   return (
     <motion.div
-      ref={chartRef}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-      className="h-full"
+      ref={ref}
+      custom={index}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      variants={variants}
+      className="glass-panel overflow-hidden"
     >
-      <div className="elegant-card h-full flex flex-col">
-        <div className="p-6 border-b border-white/5">
-          <h3 className="text-xl font-display font-semibold mb-1">{data.survey_Title || "Untitled Survey"}</h3>
-          <p className="text-sm text-elegant-gray-light">
-            {data.survey_XLabel || "X Axis"} vs {data.survey_YLabel || "Y Axis"}
-          </p>
-        </div>
-        <div className="p-6 flex-grow">
-          <ChartContainer config={chartConfig} className="h-[300px] w-full flex items-center justify-center">
-            {renderChart()}
-          </ChartContainer>
-        </div>
-        <div className="p-6 border-t border-white/5 bg-elegant-blue-dark/30">
-          <p className="text-sm mb-2">{data.survey_Explanation || "No explanation provided."}</p>
-          <div className="flex justify-between items-center text-xs text-elegant-gray-light/70">
-            <span>Source: {data.survey_SurveySource || "Unknown"}</span>
-            <span>Year: {data.survey_SurveyYear || "N/A"}</span>
+      <Card className="border-0 bg-transparent text-elegant-cream">
+        <CardHeader>
+          <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
+          <CardDescription className="text-elegant-gray-light">
+            {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
+            {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ChartContainer
+              config={{
+                item1: { label: "Value", color: "hsl(var(--chart-1))" },
+                item2: { label: "Value", color: "hsl(var(--chart-2))" },
+                item3: { label: "Value", color: "hsl(var(--chart-3))" },
+                item4: { label: "Value", color: "hsl(var(--chart-4))" },
+                item5: { label: "Value", color: "hsl(var(--chart-5))" },
+              }}
+              className="aspect-auto h-full"
+            >
+              {data.survey_ChartType === "pie" ? (
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              ) : (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: 'hsl(var(--elegant-cream))' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: 'hsl(var(--elegant-cream))' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--elegant-blue-dark))', 
+                      borderColor: 'hsl(var(--elegant-gold))',
+                      color: 'hsl(var(--elegant-cream))'
+                    }} 
+                  />
+                  <Bar dataKey="value">
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ChartContainer>
           </div>
-        </div>
-      </div>
+          <p className="mt-4 text-sm text-elegant-gray-light">{data.survey_Explanation}</p>
+        </CardContent>
+        {data.survey_URL && (
+          <CardFooter className="border-t border-white/10 pt-4">
+            <Link 
+              href={data.survey_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm text-elegant-gold hover:text-elegant-gold-light flex items-center gap-1 transition-colors"
+            >
+              View Source <ExternalLink size={14} />
+            </Link>
+          </CardFooter>
+        )}
+      </Card>
     </motion.div>
   )
 }
