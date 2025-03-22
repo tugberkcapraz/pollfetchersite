@@ -46,6 +46,21 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
     }),
   }
 
+  // Custom tooltip to ensure text is visible
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-elegant-blue-dark p-3 border border-elegant-gold rounded-md shadow-lg">
+          <p className="text-elegant-cream font-medium mb-1">{label}</p>
+          <p className="text-elegant-cream">
+            Value: <span className="text-elegant-gold font-medium">{payload[0].value}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <motion.div
       ref={ref}
@@ -73,7 +88,7 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
                 item4: { label: "Value", color: "hsl(var(--chart-4))" },
                 item5: { label: "Value", color: "hsl(var(--chart-5))" },
               }}
-              className="aspect-auto h-full [&_.recharts-cartesian-axis-tick_text]:fill-[#F8F5E6] !important"
+              className="aspect-auto h-full [&_.recharts-cartesian-axis-tick_text]:fill-[#F8F5E6] [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-transparent !important"
             >
               {data.survey_ChartType === "pie" ? (
                 <PieChart>
@@ -90,7 +105,7 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               ) : (
                 <BarChart data={chartData}>
@@ -105,11 +120,8 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
                     axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                   />
                   <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--elegant-blue-dark))', 
-                      borderColor: "#D4AF37",
-                      color: "#F8F5E6"
-                    }} 
+                    cursor={{ fill: 'rgba(255,255,255,0.1)' }}
+                    content={<CustomTooltip />}
                   />
                   <Bar dataKey="value">
                     {chartData.map((entry, index) => (
