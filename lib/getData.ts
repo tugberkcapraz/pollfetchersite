@@ -14,6 +14,7 @@ export interface SurveyData {
   survey_ChartType?: 'bar' | 'pie'
   survey_URL?: string
   survey_SourceCountry?: string
+  survey_SeenDate?: string
 }
 
 // This function simulates fetching data from an API or database
@@ -126,7 +127,8 @@ export function useSurveyData(query?: string) {
           survey_SurveyYear: poll.chartdata.SurveyYear,
           survey_ChartType: 'bar', // Default to bar, you can determine this based on data
           survey_URL: poll.url,
-          survey_SourceCountry: poll.sourcecountry
+          survey_SourceCountry: poll.sourcecountry,
+          survey_SeenDate: poll.seendate
         }))
         
         setData(transformedData)
