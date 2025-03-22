@@ -64,18 +64,18 @@ export function Footer() {
                   <div className="absolute inset-0 bg-elegant-gold rounded-full opacity-20"></div>
                   <div className="absolute inset-1 bg-gradient-to-br from-elegant-gold to-elegant-gold-light rounded-full"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-elegant-blue-dark font-bold text-sm">I</span>
+                    <span className="text-elegant-blue-dark font-bold text-sm">P</span>
                   </div>
                 </div>
                 <span className="text-xl font-display font-bold">
-                  <span className="text-elegant-cream">Insight</span>
-                  <span className="text-elegant-gold">Analytics</span>
+                  <span className="text-elegant-cream">Poll</span>
+                  <span className="text-elegant-gold">Fetcher</span>
                 </span>
               </div>
             </Link>
 
             <p className="text-elegant-gray-light mb-6 max-w-md">
-              Insight Analytics helps you discover, analyze, and visualize survey data with beautifully crafted
+              PollFetcher helps you discover, analyze, and visualize survey data with beautifully crafted
               interactive charts and deep insights.
             </p>
 
@@ -122,7 +122,7 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center">
           <p className="text-elegant-gray-light/60 text-sm mb-4 md:mb-0">
-            &copy; {currentYear} Insight Analytics. All rights reserved.
+            &copy; {currentYear} PollFetcher. All rights reserved.
           </p>
 
           <div className="flex space-x-6">

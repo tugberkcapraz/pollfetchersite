@@ -41,7 +41,7 @@ const playfair = localFont({
 })
 
 export const metadata: Metadata = {
-  title: "Insight Analytics | Visualize Survey Data With Elegance",
+  title: "PollFetcher | Visualize Survey Data With Elegance",
   description: "Discover, analyze, and visualize survey data with beautifully crafted interactive charts and insights.",
 }
 

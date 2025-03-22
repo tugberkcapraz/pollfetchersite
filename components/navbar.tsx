@@ -38,16 +38,16 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="relative w-10 h-10">
-              <div className="absolute inset-0 bg-elegant-gold rounded-full opacity-20 animate-pulse-gold"></div>
+            <div className="relative w-8 h-8">
+              <div className="absolute inset-0 bg-elegant-gold rounded-full opacity-20"></div>
               <div className="absolute inset-1 bg-gradient-to-br from-elegant-gold to-elegant-gold-light rounded-full"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-elegant-blue-dark font-bold text-xl">I</span>
+                <span className="text-elegant-blue-dark font-bold text-sm">P</span>
               </div>
             </div>
-            <span className="text-2xl font-display font-bold">
-              <span className="text-elegant-cream">Insight</span>
-              <span className="text-elegant-gold">Analytics</span>
+            <span className="text-xl font-display font-bold">
+              <span className="text-elegant-cream">Poll</span>
+              <span className="text-elegant-gold">Fetcher</span>
             </span>
           </Link>
 
