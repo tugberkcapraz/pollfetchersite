@@ -25,7 +25,13 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
   }))
 
   // Define chart colors
-  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))']
+  const COLORS = [
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))'
+  ]
 
   // Animation variants
   const variants = {
@@ -67,7 +73,7 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
                 item4: { label: "Value", color: "hsl(var(--chart-4))" },
                 item5: { label: "Value", color: "hsl(var(--chart-5))" },
               }}
-              className="aspect-auto h-full"
+              className="aspect-auto h-full [&_.recharts-cartesian-axis-tick_text]:fill-[#F8F5E6] !important"
             >
               {data.survey_ChartType === "pie" ? (
                 <PieChart>
@@ -88,21 +94,21 @@ export function DynamicChart({ data, index }: DynamicChartProps) {
                 </PieChart>
               ) : (
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
                   <XAxis 
                     dataKey="name" 
-                    tick={{ fill: 'hsl(var(--elegant-cream))' }}
+                    tick={{ fill: "#F8F5E6", fontSize: 12 }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                   />
                   <YAxis 
-                    tick={{ fill: 'hsl(var(--elegant-cream))' }}
+                    tick={{ fill: "#F8F5E6", fontSize: 12 }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                   />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--elegant-blue-dark))', 
-                      borderColor: 'hsl(var(--elegant-gold))',
-                      color: 'hsl(var(--elegant-cream))'
+                      borderColor: "#D4AF37",
+                      color: "#F8F5E6"
                     }} 
                   />
                   <Bar dataKey="value">
