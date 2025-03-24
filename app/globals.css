@@ -9,6 +9,8 @@
     --chart-3: 15 40% 40%;
     --chart-4: 200 40% 40%;
     --chart-5: 30 40% 45%;
+    --font-playfair: 'Playfair Display', serif;
+    --font-inter: 'Inter', sans-serif;
   }
 
   html {
@@ -17,6 +19,12 @@
 
   body {
     @apply bg-elegant-navy text-elegant-cream font-default;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  }
+
+  /* Ensure text is visible during font load */
+  .font-display {
+    font-family: var(--font-playfair), Georgia, serif;
   }
 }
 
@@ -172,5 +180,21 @@
 .elegant-card::before {
   content: "";
   @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-elegant-gold-dark via-elegant-gold to-elegant-gold-light;
+}
+
+.fonts-loading .font-display {
+  /* Make text visible during font loading */
+  color: inherit !important;
+  opacity: 0.95;
+}
+
+/* Add a very slight animation when fonts are loaded */
+.fonts-loaded .font-display {
+  animation: fontFadeIn 0.15s ease-in;
+}
+
+@keyframes fontFadeIn {
+  from { opacity: 0.95; }
+  to { opacity: 1; }
 }
 

@@ -1,10 +1,10 @@
 import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import localFont from "next/font/local"
+import { Inter, Playfair_Display } from "next/font/google"
 import { NoiseOverlay } from "@/components/noise-overlay"
 import { Navbar } from "@/components/navbar"
+import { FontLoadingHandler } from "@/components/font-loading-handler"
 
 // Fonts
 const inter = Inter({
@@ -13,29 +13,9 @@ const inter = Inter({
   display: "swap",
 })
 
-const playfair = localFont({
-  src: [
-    {
-      path: "../public/fonts/PlayfairDisplay-Bold.woff2",
-      weight: "700",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/PlayfairDisplay-SemiBold.woff2",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/PlayfairDisplay-Medium.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/PlayfairDisplay-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
-  ],
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-playfair",
   display: "swap",
 })
@@ -51,8 +31,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} font-sans`}>
       <body className="antialiased">
+        <FontLoadingHandler />
         <NoiseOverlay />
         <Navbar />
         <main className="min-h-screen">{children}</main>
