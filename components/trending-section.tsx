@@ -162,9 +162,9 @@ export function TrendingSection() {
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* REMOVED ALL THE WRAPPER CONTENT - Now only showing the chart */}
+                {/* Pass the currentIndex as the index prop */}
                 {polls.length > 0 && (
-                  <DynamicChart data={polls[currentIndex]} />
+                  <DynamicChart data={polls[currentIndex]} index={currentIndex} />
                 )}
               </motion.div>
             </AnimatePresence>

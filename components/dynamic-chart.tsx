@@ -11,10 +11,10 @@ import { ExternalLink } from "lucide-react"
 
 interface DynamicChartProps {
   data: SurveyData
-  index: number
+  index?: number
 }
 
-export function DynamicChart({ data, index }: DynamicChartProps) {
+export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, amount: 0.2 })
 
