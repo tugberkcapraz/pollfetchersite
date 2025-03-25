@@ -35,25 +35,29 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
 
   // Animation variants
   const variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
+    hidden: { opacity: 0, y: 50 },
+    visible: {
       opacity: 1,
       y: 0,
       transition: {
-        delay: i * 0.1,
-        duration: 0.5,
+        duration: 0.6,
+        ease: [0.215, 0.61, 0.355, 1],
+        delay: index * 0.1,
       },
-    }),
+    },
   }
 
-  // Custom tooltip to ensure text is visible
+  // Custom tooltip to ensure text is visible - Updated for light theme
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-elegant-blue-dark p-3 border border-elegant-gold rounded-md shadow-lg">
-          <p className="text-elegant-cream font-medium mb-1">{label}</p>
-          <p className="text-elegant-cream">
-            Value: <span className="text-elegant-gold font-medium">{payload[0].value}</span>
+        // Use card background (white), border, and foreground text (dark gray)
+        <div className="bg-card p-3 border border-border rounded-md shadow-lg">
+          <p className="text-card-foreground font-medium mb-1">{label}</p>
+          <p className="text-muted-foreground"> {/* Use muted foreground for "Value:" text */}
+            Value:{" "}
+            {/* Use primary (pink) or secondary (blue) for the actual value */}
+            <span className="text-primary font-medium">{payload[0].value}</span>
           </p>
         </div>
       );
@@ -68,12 +72,12 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
       initial="hidden"
       animate={isInView ? "visible" : "hidden"}
       variants={variants}
-      className="glass-panel overflow-hidden"
+      className="bg-muted border border-border rounded-lg overflow-hidden"
     >
-      <Card className="border-0 bg-transparent text-elegant-cream">
+      <Card className="border-0 bg-transparent text-card-foreground">
         <CardHeader>
           <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
-          <CardDescription className="text-elegant-gray-light">
+          <CardDescription className="text-muted-foreground">
             {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
             {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
           </CardDescription>
@@ -88,7 +92,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                 item4: { label: "Value", color: "hsl(var(--chart-4))" },
                 item5: { label: "Value", color: "hsl(var(--chart-5))" },
               }}
-              className="aspect-auto h-full [&_.recharts-cartesian-axis-tick_text]:fill-[#F8F5E6] [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-transparent !important"
+              className="aspect-auto h-full [&_.recharts-cartesian-axis-tick_text]:fill-[hsl(var(--foreground))] [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-transparent !important"
             >
               {data.survey_ChartType === "pie" ? (
                 <PieChart>
@@ -109,18 +113,23 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                 </PieChart>
               ) : (
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fill: "#F8F5E6", fontSize: 12 }}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  {/* Use foreground color with low opacity for grid lines */}
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--foreground) / 0.2)" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={true} // Ensure tick lines are visible
+                    axisLine={true} // Ensure axis line is visible
+                    stroke="hsl(var(--foreground))" // Explicitly set axis/tick color
+                    tickMargin={8}
                   />
-                  <YAxis 
-                    tick={{ fill: "#F8F5E6", fontSize: 12 }}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  <YAxis
+                    tickLine={true} // Ensure tick lines are visible
+                    axisLine={true} // Ensure axis line is visible
+                    stroke="hsl(var(--foreground))" // Explicitly set axis/tick color
+                    tickMargin={8}
                   />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.1)' }}
+                  <Tooltip
+                    cursor={false} // Keep cursor invisible for bar chart
                     content={<CustomTooltip />}
                   />
                   <Bar dataKey="value">
@@ -132,15 +141,17 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
               )}
             </ChartContainer>
           </div>
-          <p className="mt-4 text-sm text-elegant-gray-light">{data.survey_Explanation}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{data.survey_Explanation}</p>
         </CardContent>
         {data.survey_URL && (
-          <CardFooter className="border-t border-white/10 pt-4">
-            <Link 
-              href={data.survey_URL} 
-              target="_blank" 
+          // Update CardFooter link colors
+          <CardFooter className="border-t border-border pt-4">
+            <Link
+              href={data.survey_URL}
+              target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-elegant-gold hover:text-elegant-gold-light flex items-center gap-1 transition-colors"
+              // Use secondary (blue) for link, hover slightly darker/lighter
+              className="text-sm text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors"
             >
               View Source <ExternalLink size={14} />
             </Link>

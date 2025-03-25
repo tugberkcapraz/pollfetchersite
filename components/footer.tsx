@@ -54,27 +54,27 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-elegant-blue-dark border-t border-white/5 pt-16 pb-8">
+    <footer className="bg-card border-t border-border pt-16 pb-8">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block mb-6">
               <div className="flex items-center space-x-2">
                 <div className="relative w-8 h-8">
-                  <div className="absolute inset-0 bg-elegant-gold rounded-full opacity-20"></div>
-                  <div className="absolute inset-1 bg-gradient-to-br from-elegant-gold to-elegant-gold-light rounded-full"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full opacity-20"></div>
+                  <div className="absolute inset-1 bg-gradient-to-br from-primary to-secondary rounded-full"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-elegant-blue-dark font-bold text-sm">P</span>
+                    <span className="text-white font-bold text-sm">P</span>
                   </div>
                 </div>
                 <span className="text-xl font-display font-bold">
-                  <span className="text-elegant-cream">Poll</span>
-                  <span className="text-elegant-gold">Fetcher</span>
+                  <span className="text-primary">Poll</span>
+                  <span className="text-secondary">Fetcher</span>
                 </span>
               </div>
             </Link>
 
-            <p className="text-elegant-gray-light mb-6 max-w-md">
+            <p className="text-muted-foreground mb-6 max-w-md">
               PollFetcher helps you discover, analyze, and visualize survey data with beautifully crafted
               interactive charts and deep insights.
             </p>
@@ -84,7 +84,7 @@ export function Footer() {
                 <a
                   key={social.name}
                   href={social.href}
-                  className="text-elegant-gray-light hover:text-elegant-gold transition-colors"
+                  className="text-muted-foreground hover:text-secondary transition-colors"
                   aria-label={social.name}
                 >
                   <svg
@@ -103,13 +103,13 @@ export function Footer() {
 
           {footerLinks.map((group) => (
             <div key={group.title}>
-              <h3 className="text-lg font-display font-semibold mb-4">{group.title}</h3>
+              <h3 className="text-lg font-display font-semibold mb-4 text-foreground">{group.title}</h3>
               <ul className="space-y-3">
                 {group.links.map((link) => (
                   <li key={link.name}>
                     <Link
                       href={link.href}
-                      className="text-elegant-gray-light hover:text-elegant-gold transition-colors"
+                      className="text-muted-foreground hover:text-secondary transition-colors"
                     >
                       {link.name}
                     </Link>
@@ -120,27 +120,27 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-elegant-gray-light/60 text-sm mb-4 md:mb-0">
+        <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center">
+          <p className="text-muted-foreground/80 text-sm mb-4 md:mb-0">
             &copy; {currentYear} PollFetcher. All rights reserved.
           </p>
 
           <div className="flex space-x-6">
             <Link
               href="/terms"
-              className="text-elegant-gray-light/60 hover:text-elegant-gold text-sm transition-colors"
+              className="text-muted-foreground/80 hover:text-secondary text-sm transition-colors"
             >
               Terms of Service
             </Link>
             <Link
               href="/privacy"
-              className="text-elegant-gray-light/60 hover:text-elegant-gold text-sm transition-colors"
+              className="text-muted-foreground/80 hover:text-secondary text-sm transition-colors"
             >
               Privacy Policy
             </Link>
             <Link
               href="/cookies"
-              className="text-elegant-gray-light/60 hover:text-elegant-gold text-sm transition-colors"
+              className="text-muted-foreground/80 hover:text-secondary text-sm transition-colors"
             >
               Cookie Policy
             </Link>
