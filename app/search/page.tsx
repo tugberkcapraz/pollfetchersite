@@ -8,6 +8,7 @@ import { DynamicChart } from "@/components/dynamic-chart"
 import { SearchBar } from "@/components/search-bar"
 import { Footer } from "@/components/footer"
 import { SortSelector } from "@/components/sort-selector"
+import { RandomPollsGallery } from "@/components/random-polls-gallery"
 
 export default function SearchPage() {
   const router = useRouter()
@@ -74,7 +75,11 @@ export default function SearchPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <SearchBar />
+              {query ? (
+                <SearchBar />
+              ) : (
+                <RandomPollsGallery />
+              )}
             </motion.div>
           </div>
 
