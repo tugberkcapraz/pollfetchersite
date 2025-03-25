@@ -26,13 +26,24 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Create a standardized poll object
+      // Create a standardized poll object matching format from pollsearch2
       return {
         title: chartdata.Title || "Untitled Poll",
-        url: "#", // Default URL if not available
-        seendate: new Date().toISOString(), // Use current date as fallback
-        chartdata: chartdata,
-        sourcecountry: chartdata.SurveyCustomer || "Unknown"
+        url: row.url || "#", // Use actual URL from database if available
+        seendate: row.seendate || new Date().toISOString(),
+        chartdata: {
+          DataAssessment: chartdata.DataAssessment || "",
+          XValue: chartdata.XValue || [],
+          XLabel: chartdata.XLabel || "",
+          YValue: chartdata.YValue || [],
+          YLabel: chartdata.YLabel || "",
+          Title: chartdata.Title || "",
+          Explanation: chartdata.Explanation || "",
+          SurveySource: chartdata.SurveySource || "",
+          SurveyCustomer: chartdata.SurveyCustomer || "",
+          SurveyYear: chartdata.SurveyYear || ""
+        },
+        sourcecountry: row.sourcecountry || chartdata.SurveyCustomer || "Unknown"
       };
     });
 

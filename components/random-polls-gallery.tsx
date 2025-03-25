@@ -3,15 +3,41 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import Link from "next/link"
-import { format, parseISO, isValid } from "date-fns"
+import { format } from "date-fns"
 
 type Poll = {
   title: string
   url: string
   seendate: string
-  chartdata: any
+  chartdata: {
+    DataAssessment?: string
+    XValue: string[]
+    XLabel: string
+    YValue: number[]
+    YLabel: string
+    Title: string
+    Explanation?: string
+    SurveySource?: string
+    SurveyCustomer?: string
+    SurveyYear?: string
+  }
   sourcecountry: string
+}
+
+// Directly import these from wherever your SurveyData type is defined
+interface SurveyData {
+  survey_Title: string;
+  survey_XValue: string[];
+  survey_YValue: number[];
+  survey_XLabel: string;
+  survey_YLabel: string;
+  survey_Explanation: string;
+  survey_SurveySource: string;
+  survey_SurveyYear: string;
+  survey_ChartType: "bar" | "pie" | undefined;
+  survey_URL: string;
+  survey_SourceCountry: string;
+  survey_SeenDate: string;
 }
 
 export function RandomPollsGallery() {
@@ -75,6 +101,25 @@ export function RandomPollsGallery() {
   }
 
   const currentPoll = polls[currentIndex]
+  
+  // Convert poll data to SurveyData format for DynamicChart
+  const surveyData: SurveyData = {
+    survey_Title: currentPoll.title,
+    survey_XValue: currentPoll.chartdata.XValue || [],
+    survey_YValue: currentPoll.chartdata.YValue || [],
+    survey_XLabel: currentPoll.chartdata.XLabel || "",
+    survey_YLabel: currentPoll.chartdata.YLabel || "",
+    survey_Explanation: currentPoll.chartdata.Explanation || "",
+    survey_SurveySource: currentPoll.chartdata.SurveySource || "",
+    survey_SurveyYear: currentPoll.chartdata.SurveyYear || "",
+    survey_ChartType: "bar", // Explicitly typed as "bar"
+    survey_URL: currentPoll.url || "#",
+    survey_SourceCountry: currentPoll.sourcecountry || "",
+    survey_SeenDate: currentPoll.seendate || new Date().toISOString()
+  }
+
+  // Import this component where it's needed
+  const DynamicChartImport = require("@/components/dynamic-chart").DynamicChart
 
   return (
     <div className="relative py-8">
@@ -82,8 +127,9 @@ export function RandomPollsGallery() {
         Random Polls From <span className="gradient-text">{yesterday}</span>
       </h2>
       
-      <div className="relative max-w-4xl mx-auto bg-elegant-blue-dark/50 backdrop-blur rounded-xl p-6 border border-elegant-gold/10">
-        <div className="absolute -top-4 right-4 bg-elegant-blue px-4 py-1 rounded-full text-sm text-elegant-gold-light border border-elegant-gold/20">
+      <div className="relative max-w-4xl mx-auto">
+        {/* This counter pill */}
+        <div className="absolute -top-4 right-4 z-10 bg-elegant-blue px-4 py-1 rounded-full text-sm text-elegant-gold-light border border-elegant-gold/20">
           {currentIndex + 1} of {polls.length}
         </div>
         
@@ -94,51 +140,16 @@ export function RandomPollsGallery() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="min-h-[300px]"
           >
-            <h3 className="text-2xl font-display font-bold mb-4">{currentPoll.title}</h3>
-            <div className="mb-4 flex items-center space-x-3">
-              <span className="text-elegant-gray-light text-sm">
-                {(() => {
-                  try {
-                    // Safely parse the date and check if it's valid
-                    const date = parseISO(currentPoll.seendate);
-                    return isValid(date) ? format(date, "MMM d, yyyy") : "Date unavailable";
-                  } catch (e) {
-                    return "Date unavailable";
-                  }
-                })()}
-              </span>
-              <div className="h-4 w-px bg-elegant-gray-light/30"></div>
-              <span className="text-elegant-gold-light text-sm">
-                {currentPoll.sourcecountry}
-              </span>
-            </div>
-            
-            <div className="h-[200px] mb-4">
-              {/* This is where you would render the chart using the chartdata */}
-              <div className="w-full h-full flex items-center justify-center bg-elegant-blue/30 rounded-lg border border-elegant-blue-light/20">
-                <p className="text-elegant-gray-light">Chart visualization goes here</p>
-              </div>
-            </div>
-            
-            <Link 
-              href={currentPoll.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-elegant-gold hover:text-elegant-gold-light transition-colors inline-flex items-center"
-            >
-              View original source
-              <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </Link>
+            {/* Use DynamicChartImport instead of importing */}
+            <DynamicChartImport data={surveyData} />
           </motion.div>
         </AnimatePresence>
         
+        {/* Navigation buttons */}
         <button 
           onClick={handlePrev}
-          className="absolute left-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
+          className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
           aria-label="Previous poll"
         >
           <ChevronLeft className="w-6 h-6 text-elegant-gold" />
@@ -146,13 +157,14 @@ export function RandomPollsGallery() {
         
         <button 
           onClick={handleNext}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
           aria-label="Next poll"
         >
           <ChevronRight className="w-6 h-6 text-elegant-gold" />
         </button>
       </div>
       
+      {/* Pagination indicators */}
       <div className="flex justify-center mt-6">
         <div className="flex space-x-2">
           {polls.map((_, idx) => (

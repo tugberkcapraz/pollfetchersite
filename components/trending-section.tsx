@@ -7,6 +7,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { DynamicChart } from "@/components/dynamic-chart"
 
+// Fixed typing to match expected type
 type SurveyData = {
   survey_Title: string;
   survey_XValue: string[];
@@ -16,10 +17,30 @@ type SurveyData = {
   survey_Explanation: string;
   survey_SurveySource: string;
   survey_SurveyYear: string;
-  survey_ChartType: string;
+  survey_ChartType: "bar" | "pie" | undefined;
   survey_URL: string;
   survey_SourceCountry: string;
   survey_SeenDate: string;
+};
+
+// This is for API response type safety
+type Poll = {
+  title: string;
+  url: string;
+  seendate: string;
+  chartdata: {
+    DataAssessment?: string;
+    XValue: string[];
+    XLabel: string;
+    YValue: number[];
+    YLabel: string;
+    Title: string;
+    Explanation?: string;
+    SurveySource?: string;
+    SurveyCustomer?: string;
+    SurveyYear?: string;
+  };
+  sourcecountry: string;
 };
 
 export function TrendingSection() {
@@ -46,7 +67,7 @@ export function TrendingSection() {
         const data = await response.json()
         
         // Transform the data to match our SurveyData interface
-        const transformedData: SurveyData[] = data.polls.map(poll => ({
+        const transformedData: SurveyData[] = data.polls.map((poll: Poll) => ({
           survey_Title: poll.chartdata.Title || poll.title,
           survey_XValue: poll.chartdata.XValue || [],
           survey_YValue: poll.chartdata.YValue || [],
@@ -55,7 +76,7 @@ export function TrendingSection() {
           survey_Explanation: poll.chartdata.Explanation || "",
           survey_SurveySource: poll.chartdata.SurveySource || "",
           survey_SurveyYear: poll.chartdata.SurveyYear || "",
-          survey_ChartType: 'bar', // Default to bar
+          survey_ChartType: "bar", // Fixed type
           survey_URL: poll.url || "#",
           survey_SourceCountry: poll.sourcecountry || "",
           survey_SeenDate: poll.seendate || new Date().toISOString()
@@ -129,7 +150,7 @@ export function TrendingSection() {
           </div>
         ) : (
           <div className="relative max-w-4xl mx-auto">
-            <div className="absolute -top-4 right-4 bg-elegant-blue px-4 py-1 rounded-full text-sm text-elegant-gold-light border border-elegant-gold/20">
+            <div className="absolute -top-4 right-4 z-10 bg-elegant-blue px-4 py-1 rounded-full text-sm text-elegant-gold-light border border-elegant-gold/20">
               {currentIndex + 1} of {polls.length}
             </div>
             
@@ -140,59 +161,17 @@ export function TrendingSection() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.3 }}
-                className="bg-elegant-blue-dark/50 backdrop-blur rounded-xl p-6 border border-elegant-gold/10"
               >
+                {/* REMOVED ALL THE WRAPPER CONTENT - Now only showing the chart */}
                 {polls.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-display font-bold mb-4">
-                      {polls[currentIndex].survey_Title}
-                    </h3>
-                    <div className="mb-4 flex items-center space-x-3">
-                      <span className="text-elegant-gray-light text-sm">
-                        {polls[currentIndex].survey_SurveyYear || "Unknown Year"}
-                      </span>
-                      <div className="h-4 w-px bg-elegant-gray-light/30"></div>
-                      <span className="text-elegant-gold-light text-sm">
-                        {polls[currentIndex].survey_SourceCountry}
-                      </span>
-                    </div>
-                    
-                    {/* Chart visualization using the DynamicChart component */}
-                    <div className="h-[300px] mb-6">
-                      <DynamicChart data={polls[currentIndex]} index={currentIndex} />
-                    </div>
-                    
-                    <p className="text-elegant-gray-light mb-4">
-                      {polls[currentIndex].survey_Explanation}
-                    </p>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-elegant-gray">
-                        Source: {polls[currentIndex].survey_SurveySource}
-                      </div>
-                      
-                      {polls[currentIndex].survey_URL && polls[currentIndex].survey_URL !== "#" && (
-                        <Link 
-                          href={polls[currentIndex].survey_URL} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-elegant-gold hover:text-elegant-gold-light transition-colors inline-flex items-center"
-                        >
-                          View original source
-                          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                  <DynamicChart data={polls[currentIndex]} />
                 )}
               </motion.div>
             </AnimatePresence>
             
             <button 
               onClick={handlePrev}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
               aria-label="Previous poll"
             >
               <ChevronLeft className="w-6 h-6 text-elegant-gold" />
@@ -200,7 +179,7 @@ export function TrendingSection() {
             
             <button 
               onClick={handleNext}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 bg-elegant-blue/70 hover:bg-elegant-blue transition-colors rounded-full flex items-center justify-center"
               aria-label="Next poll"
             >
               <ChevronRight className="w-6 h-6 text-elegant-gold" />
