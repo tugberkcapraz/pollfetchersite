@@ -64,9 +64,9 @@ export function HeroSection() {
           >
             <div className="inline-block mb-4">
               <div className="relative">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-elegant-gold-dark via-elegant-gold to-elegant-gold-light opacity-50 blur-md animate-pulse-gold"></div>
-                <div className="relative bg-elegant-blue-dark rounded-full px-6 py-2 border border-elegant-gold/20">
-                  <span className="text-sm font-medium">Visualize Data With Elegance</span>
+                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary via-primary/70 to-primary/50 opacity-50 blur-md animate-pulse"></div>
+                <div className="relative bg-card rounded-full px-6 py-2 border border-primary">
+                  <span className="text-sm font-medium text-foreground">Visualize Data With Elegance</span>
                 </div>
               </div>
             </div>

@@ -68,8 +68,10 @@ export function Footer() {
                   </div>
                 </div>
                 <span className="text-xl font-display font-bold">
-                  <span className="text-primary">Poll</span>
-                  <span className="text-secondary">Fetcher</span>
+                  <span className="text-black">Poll</span>
+                  <span className="bg-gradient-to-r from-secondary to-accent-light bg-clip-text text-transparent">
+                    Fetcher
+                  </span>
                 </span>
               </div>
             </Link>
