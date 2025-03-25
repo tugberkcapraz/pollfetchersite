@@ -39,6 +39,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        "accent-light": "hsl(var(--accent-light))",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -47,29 +48,8 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Elegant color palette
-        elegant: {
-          navy: "#0F1C2E",
-          blue: {
-            DEFAULT: "#1E3A5F",
-            light: "#2C5282",
-            dark: "#0A1929",
-          },
-          gold: {
-            DEFAULT: "#D4AF37",
-            light: "#F0D78C",
-            dark: "#9D7E2A",
-          },
-          cream: "#F8F5E6",
-          gray: {
-            DEFAULT: "#6E7A8A",
-            light: "#A0AEC0",
-            dark: "#4A5568",
-          },
-          accent1: "#7D5A50", // Warm brown
-          accent2: "#4A6670", // Slate blue
-          accent3: "#8C7355", // Taupe
-        },
+        black: "hsl(var(--black))",
+        white: "hsl(var(--white))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -88,9 +68,9 @@ const config: Config = {
         "marble-pattern": "url('/marble-texture.png')",
       },
       boxShadow: {
-        elegant: "0 4px 20px rgba(15, 28, 46, 0.1)",
-        "elegant-lg": "0 10px 30px rgba(15, 28, 46, 0.15)",
-        gold: "0 0 15px rgba(212, 175, 55, 0.3)",
+        // elegant: "0 4px 20px rgba(15, 28, 46, 0.1)",
+        // "elegant-lg": "0 10px 30px rgba(15, 28, 46, 0.15)",
+        // gold: "0 0 15px rgba(212, 175, 55, 0.3)",
       },
       keyframes: {
         float: {

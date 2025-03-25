@@ -8,6 +8,7 @@ import { DynamicChart } from "@/components/dynamic-chart"
 import { SearchBar } from "@/components/search-bar"
 import { Footer } from "@/components/footer"
 import { SortSelector } from "@/components/sort-selector"
+import { RandomPollsGallery } from "@/components/random-polls-gallery"
 
 export default function SearchPage() {
   const router = useRouter()
@@ -50,9 +51,9 @@ export default function SearchPage() {
     <>
       <div className="min-h-screen pt-24 pb-16">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="max-w-4xl mx-auto mb-12">
+          <div className="max-w-4xl mx-auto">
             <motion.h1
-              className="text-3xl md:text-4xl font-display font-bold mb-6"
+              className="text-3xl md:text-4xl font-display font-bold mb-6 px-1"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -69,11 +70,16 @@ export default function SearchPage() {
             </motion.h1>
 
             <motion.div
+              className="w-full"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <SearchBar />
+              {query ? (
+                <SearchBar />
+              ) : (
+                <RandomPollsGallery />
+              )}
             </motion.div>
           </div>
 
