@@ -7,6 +7,10 @@ import { pool } from '@/lib/db';
 // const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
 export async function POST(request: NextRequest) {
+  console.log('Environment variables available:', Object.keys(process.env));
+  console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+  console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
+  
   // Initialize Google Generative AI inside the handler
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   if (!process.env.GEMINI_API_KEY) {
@@ -77,14 +81,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Remove the selectRelevantUrls function entirely
-/* 
-// Function to select relevant URLs using structured output - REMOVED
-async function selectRelevantUrls(query: string, polls: any[]) {
-  // ... implementation removed ...
-}
-*/
 
 // Function to retrieve article text for the selected URLs
 async function retrieveArticleText(urls: string[]) {
