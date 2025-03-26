@@ -107,7 +107,7 @@ async function generateFullReport(query: string, articles: { url: string; text: 
     // Prepare poll metadata for context (using the original polls array)
     const pollData = polls.map(poll => ({
       title: poll.title || poll.chartdata?.Title || "Untitled Poll",
-      url: poll.url || "#", // Include URL in metadata
+      url: poll.url || "#",
       chartData: {
         xValues: poll.chartdata?.XValue || [],
         yValues: poll.chartdata?.YValue || [],
@@ -122,41 +122,43 @@ async function generateFullReport(query: string, articles: { url: string; text: 
     
     // Prepare the article content (limit length to avoid context limits)
     const articleContent = articles.map(article => {
-      // Limit each article's text to avoid overly long prompts
-      const truncatedText = article.text.length > 4000 
-        ? article.text.substring(0, 4000) + "... [truncated]" 
-        : article.text;
+      const text = article.text || ""; 
+      const truncatedText = text.length > 4000 
+        ? text.substring(0, 4000) + "... [truncated]" 
+        : text;
       
-      // Only include articles with actual text content
       return truncatedText ? `SOURCE: ${article.url}\n\n${truncatedText}\n\n---\n\n` : '';
-    }).filter(content => content).join(""); // Filter out empty strings and join
+    }).filter(content => content).join("");
     
-    // Create a prompt for the comprehensive report
+    // Create a prompt that PRIORITIZES article content
     const prompt = `
-      User question: "${query}"
-      
-      POLL METADATA (Top ${pollData.length} results):
-      ${JSON.stringify(pollData, null, 2)}
-      
-      ${articleContent ? `ARTICLE CONTENT:\n${articleContent}` : 'No relevant article text found.'}
-      
-      Based on the poll metadata ${articleContent ? 'and article content' : ''} provided, generate a comprehensive report that answers the user's question.
-      
-      Your report should:
-      1. Start with an executive summary of the key findings related to the question.
-      2. Include relevant statistics and insights from the poll metadata.
-      ${articleContent ? '3. Incorporate information from the article content where relevant, citing the source URL.' : ''}
-      4. Use markdown formatting for better readability (headers, bullet points, etc.).
-      5. End with a conclusion that directly addresses the original question.
-      
-      Make your report informative, data-driven, and focused on answering the specific question using the provided context. If the context is insufficient, state that clearly.
-    `;
+User question: "${query}"
+
+I need you to generate a report that answers this question primarily based on the ARTICLE TEXT below. 
+The poll metadata is secondary and should only be used to supplement your analysis.
+
+${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
+
+SECONDARY SOURCE - POLL METADATA (ONLY USE IF NEEDED):
+${JSON.stringify(pollData, null, 2)}
+
+Your report MUST:
+1. PRIMARILY use information from the ARTICLE TEXTS
+2. Only reference the poll metadata when helpful
+3. Format your response in markdown with clear headers and sections
+4. Directly quote relevant passages from the articles when possible
+5. Include citations to the source URLs when quoting or paraphrasing
+6. Be comprehensive but focused on answering the specific question
+7. Clearly state if the provided information is insufficient to fully answer the question
+
+Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
+`;
     
     // Generate the report
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.3, // Slightly increased for potentially better synthesis
+        temperature: 1, // Lower temperature for more focus on source material
         maxOutputTokens: 4096
       }
     });
