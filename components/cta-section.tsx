@@ -22,7 +22,7 @@ export function CtaSection() {
           <div className="relative inline-block mb-6">
             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-elegant-gold-dark to-elegant-gold opacity-50 blur-md animate-pulse-gold"></div>
             <div className="relative bg-elegant-blue-dark rounded-full px-6 py-2 border border-elegant-gold/20">
-              <span className="text-sm font-medium">Start Exploring Today</span>
+              <span className="text-sm font-medium">Get Reports</span>
             </div>
           </div>
 
@@ -31,13 +31,12 @@ export function CtaSection() {
           </h2>
 
           <p className="text-xl text-elegant-gray-light mb-10 max-w-2xl mx-auto">
-            Join thousands of researchers, journalists, and analysts who use Insight Analytics to discover insights and
-            make data-driven decisions.
+            Ask questions about survey data and generate comprehensive reports based on our extensive database of polls.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <Link href="/search" className="elegant-button text-lg px-10 py-4 w-full sm:w-auto">
-              Start Exploring
+            <Link href="/report" className="elegant-button text-lg px-10 py-4 w-full sm:w-auto">
+              Generate Report
             </Link>
 
             <Link

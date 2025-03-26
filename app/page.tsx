@@ -13,8 +13,9 @@ export default function Home() {
       <HeroSection />
       <FeaturesSection />
       <TrendingSection />
-      <TestimonialSection />
       <CtaSection />
+      <TestimonialSection />
+      {/*
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
         <Link href="/report">
           <div className="glass-panel p-6 rounded-xl transition-transform hover:scale-105">
@@ -28,6 +29,7 @@ export default function Home() {
           </div>
         </Link>
       </div>
+      */}
       <Footer />
     </>
   )
