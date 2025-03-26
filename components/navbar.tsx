@@ -82,8 +82,8 @@ export function Navbar() {
             <button className="p-2 rounded-full bg-muted hover:bg-border transition-colors">
               <Search className="w-5 h-5 text-secondary" />
             </button>
-            <Link href="/search" className="themed-button text-sm">
-              Explore Data
+            <Link href="/metrics" className="themed-button text-sm">
+              Metrics
             </Link>
           </div>
 
@@ -131,11 +131,11 @@ export function Navbar() {
 
               <div className="mt-auto">
                 <Link
-                  href="/search"
+                  href="/metrics"
                   className="themed-button w-full flex items-center justify-center text-center"
                   onClick={() => setIsOpen(false)}
                 >
-                  Explore Data
+                  Metrics
                 </Link>
               </div>
             </div>
