@@ -44,7 +44,7 @@ export function Navbar() {
             <Image
               src="/logo.svg"
               alt="PollFetcher Logo"
-              width={143}
+              width={170}
               height={32}
               priority
             />
