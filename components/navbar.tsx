@@ -5,6 +5,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X, Search, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -27,6 +29,7 @@ export function Navbar() {
     { name: "Explore", path: "/explore" },
     { name: "Features", path: "/features" },
     { name: "About", path: "/about" },
+    { name: "Reports", path: "/report" },
   ]
 
   return (
@@ -38,17 +41,13 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="relative w-8 h-8">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full opacity-20"></div>
-              <div className="absolute inset-1 bg-gradient-to-br from-primary to-secondary rounded-full"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-            </div>
-            <span className="text-xl font-display font-bold">
-              <span className="text-primary">Poll</span>
-              <span className="text-secondary">Fetcher</span>
-            </span>
+            <Image
+              src="/logo.svg"
+              alt="PollFetcher Logo"
+              width={143}
+              height={32}
+              priority
+            />
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
@@ -80,8 +79,8 @@ export function Navbar() {
             <button className="p-2 rounded-full bg-muted hover:bg-border transition-colors">
               <Search className="w-5 h-5 text-secondary" />
             </button>
-            <Link href="/search" className="themed-button text-sm">
-              Explore Data
+            <Link href="/metrics" className="themed-button text-sm">
+              Metrics
             </Link>
           </div>
 
@@ -129,11 +128,11 @@ export function Navbar() {
 
               <div className="mt-auto">
                 <Link
-                  href="/search"
+                  href="/metrics"
                   className="themed-button w-full flex items-center justify-center text-center"
                   onClick={() => setIsOpen(false)}
                 >
-                  Explore Data
+                  Metrics
                 </Link>
               </div>
             </div>
