@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { DynamicChart } from "@/components/dynamic-chart"
 import { SurveyData } from "@/lib/getData"
-import { Loader2 } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 
 export default function MetricsPage() {
   const [totalPolls, setTotalPolls] = useState<SurveyData | null>(null)
@@ -12,59 +12,86 @@ export default function MetricsPage() {
   const [languagesData, setLanguagesData] = useState<SurveyData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const fetchMetricsData = async (forceRefresh = false) => {
+    try {
+      setLoading(true)
+      const url = forceRefresh 
+        ? '/api/metrics?refresh=true' 
+        : '/api/metrics'
+      
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      setTotalPolls(data.totalPolls)
+      setCountriesData(data.countriesData)
+      setDomainsData(data.domainsData)
+      setLanguagesData(data.languagesData)
+      setLastUpdated(new Date())
+    } catch (err) {
+      console.error('Error fetching metrics:', err)
+      setError('Failed to load metrics data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchMetricsData = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/metrics')
-        
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        
-        setTotalPolls(data.totalPolls)
-        setCountriesData(data.countriesData)
-        setDomainsData(data.domainsData)
-        setLanguagesData(data.languagesData)
-      } catch (err) {
-        console.error('Error fetching metrics:', err)
-        setError('Failed to load metrics data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchMetricsData()
   }, [])
 
-  if (loading) {
+  const handleRefresh = () => {
+    fetchMetricsData(true)
+  }
+
+  if (loading && !totalPolls) {
     return (
-      <div className="container mx-auto py-12 flex justify-center items-center min-h-[60vh]">
+      <div className="container mx-auto py-24 flex justify-center items-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2">Loading metrics data...</span>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="container mx-auto py-12">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+  return (
+    <div className="container mx-auto pt-24 pb-16 px-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
+        <h1 className="text-3xl md:text-4xl font-bold">Metrics Dashboard</h1>
+        <div className="flex items-center self-end md:self-auto">
+          {lastUpdated && (
+            <div className="text-sm text-muted-foreground mr-4">
+              Last updated: {lastUpdated.toLocaleString()}
+            </div>
+          )}
+          <button 
+            onClick={handleRefresh} 
+            disabled={loading}
+            className="py-2 px-4 rounded-md bg-primary hover:bg-primary/90 text-white flex items-center whitespace-nowrap"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh Data
+          </button>
+        </div>
+      </div>
+      
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-12">
           <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
           <p className="text-red-700">{error}</p>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="container mx-auto py-12">
-      <h1 className="text-4xl font-bold mb-8">Metrics Dashboard</h1>
+      )}
       
-      <div className="grid grid-cols-1 gap-12">
+      <div className="grid grid-cols-1 gap-16">
         {totalPolls && (
           <div className="w-full h-[400px]">
             <DynamicChart data={totalPolls} />
