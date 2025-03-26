@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { pool } from '@/lib/db';
 
-// Initialize Google Generative AI with API key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+// Remove initialization from module scope
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
 export async function POST(request: NextRequest) {
+  // Initialize Google Generative AI inside the handler
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY environment variable is not set.');
+    return NextResponse.json(
+      { error: 'Server configuration error: Missing API key.' },
+      { status: 500 }
+    );
+  }
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
   try {
     const { query } = await request.json();
     
@@ -52,7 +63,8 @@ export async function POST(request: NextRequest) {
     
     // Step 5: Generate a comprehensive report using the article content and poll metadata
     // Pass the original 'polls' array for metadata context
-    const report = await generateFullReport(query, articles, polls); 
+    // Pass the initialized model to the function
+    const report = await generateFullReport(query, articles, polls, model); 
     
     // Step 6: Return the report
     return NextResponse.json({ report });
@@ -102,7 +114,8 @@ async function retrieveArticleText(urls: string[]) {
 }
 
 // Function to generate a comprehensive report using the article content
-async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[]) {
+// Update function signature to accept the model
+async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], model: any) {
   try {
     // Prepare poll metadata for context (using the original polls array)
     const pollData = polls.map(poll => ({
@@ -162,7 +175,7 @@ Then at the end have:
 Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
 `;
     
-    // Generate the report
+    // Generate the report using the passed model
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {

@@ -63,7 +63,7 @@ export function Footer() {
               <Image
                 src="/logo.svg"
                 alt="PollFetcher Logo"
-                width={172}
+                width={200}
                 height={38}
               />
             </Link>
