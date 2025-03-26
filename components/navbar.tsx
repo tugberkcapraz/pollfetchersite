@@ -27,6 +27,7 @@ export function Navbar() {
     { name: "Explore", path: "/explore" },
     { name: "Features", path: "/features" },
     { name: "About", path: "/about" },
+    { name: "Reports", path: "/report" },
   ]
 
   return (
