@@ -47,9 +47,57 @@ export async function GET(request: NextRequest) {
       survey_ChartType: "bar"
     };
     
+    // Get domain data
+    const domainsResult = await pool.query(`
+      SELECT "Domain", COUNT(*) AS observation_count
+      FROM surveyembeddings
+      WHERE "Domain" != ''
+      GROUP BY "Domain"
+      ORDER BY observation_count DESC
+      LIMIT 20
+    `);
+    
+    // Format domains data for chart display
+    const domainsData: SurveyData = {
+      survey_Title: "Top 20 Domains by Poll Count",
+      survey_XValue: domainsResult.rows.map(row => row.Domain),
+      survey_YValue: domainsResult.rows.map(row => parseInt(row.observation_count, 10)),
+      survey_XLabel: "Domain",
+      survey_YLabel: "Number of Polls",
+      survey_Explanation: "Distribution of polls by domain, showing the top 20 domains",
+      survey_SurveySource: "Database Analytics",
+      survey_SurveyYear: new Date().getFullYear().toString(),
+      survey_ChartType: "bar"
+    };
+    
+    // Get language data
+    const languagesResult = await pool.query(`
+      SELECT "Language", COUNT(*) AS observation_count
+      FROM surveyembeddings
+      WHERE "Language" != ''
+      GROUP BY "Language"
+      ORDER BY observation_count DESC
+      LIMIT 20
+    `);
+    
+    // Format languages data for chart display
+    const languagesData: SurveyData = {
+      survey_Title: "Top 20 Languages by Poll Count",
+      survey_XValue: languagesResult.rows.map(row => row.Language),
+      survey_YValue: languagesResult.rows.map(row => parseInt(row.observation_count, 10)),
+      survey_XLabel: "Language",
+      survey_YLabel: "Number of Polls",
+      survey_Explanation: "Distribution of polls by language, showing the top 20 languages",
+      survey_SurveySource: "Database Analytics",
+      survey_SurveyYear: new Date().getFullYear().toString(),
+      survey_ChartType: "bar"
+    };
+    
     return NextResponse.json({
       totalPolls: totalPollsData,
-      countriesData: countriesData
+      countriesData: countriesData,
+      domainsData: domainsData,
+      languagesData: languagesData
     });
     
   } catch (error) {

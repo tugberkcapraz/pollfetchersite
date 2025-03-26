@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react"
 export default function MetricsPage() {
   const [totalPolls, setTotalPolls] = useState<SurveyData | null>(null)
   const [countriesData, setCountriesData] = useState<SurveyData | null>(null)
+  const [domainsData, setDomainsData] = useState<SurveyData | null>(null)
+  const [languagesData, setLanguagesData] = useState<SurveyData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,6 +27,8 @@ export default function MetricsPage() {
         
         setTotalPolls(data.totalPolls)
         setCountriesData(data.countriesData)
+        setDomainsData(data.domainsData)
+        setLanguagesData(data.languagesData)
       } catch (err) {
         console.error('Error fetching metrics:', err)
         setError('Failed to load metrics data')
@@ -70,6 +74,18 @@ export default function MetricsPage() {
         {countriesData && (
           <div className="w-full h-[600px]">
             <DynamicChart data={countriesData} />
+          </div>
+        )}
+        
+        {domainsData && (
+          <div className="w-full h-[600px]">
+            <DynamicChart data={domainsData} />
+          </div>
+        )}
+        
+        {languagesData && (
+          <div className="w-full h-[600px]">
+            <DynamicChart data={languagesData} />
           </div>
         )}
       </div>
