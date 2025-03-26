@@ -130,7 +130,7 @@ async function generateFullReport(query: string, articles: { url: string; text: 
       return truncatedText ? `SOURCE: ${article.url}\n\n${truncatedText}\n\n---\n\n` : '';
     }).filter(content => content).join("");
     
-    // Create a prompt that PRIORITIZES article content
+    // Create a prompt that PRIORITIZES article content AND specifies numbered citations
     const prompt = `
 User question: "${query}"
 
@@ -144,12 +144,20 @@ ${JSON.stringify(pollData, null, 2)}
 
 Your report MUST:
 1. PRIMARILY use information from the ARTICLE TEXTS
-2. Only reference the poll metadata when helpful
+2. Only reference the poll metadata when helpful. But when you are using the poll make sure that explain it well and in detail.
 3. Format your response in markdown with clear headers and sections
-4. Directly quote relevant passages from the articles when possible
-5. Include citations to the source URLs when quoting or paraphrasing
+4. Use numbered citation format - when referencing content from articles, add a numbered citation like [1], [2], etc.
+5. Include a "References" section at the end of the report with a numbered list of all sources used
 6. Be comprehensive but focused on answering the specific question
 7. Clearly state if the provided information is insufficient to fully answer the question
+
+Example format for citations:
+"According to a recent survey, 64% of Americans support this policy [1]."
+
+Then at the end have:
+"## References
+1. [Source Title or URL](actual URL)
+2. [Another Source](actual URL)"
 
 Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
 `;
@@ -158,7 +166,7 @@ Read the articles carefully and prioritize this content over the metadata. Do no
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 1, // Lower temperature for more focus on source material
+        temperature: 0.3, // Lower temperature for more focus on source material - changed from 1.0 to 0.3
         maxOutputTokens: 4096
       }
     });

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -59,21 +60,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block mb-6">
-              <div className="flex items-center space-x-2">
-                <div className="relative w-8 h-8">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full opacity-20"></div>
-                  <div className="absolute inset-1 bg-gradient-to-br from-primary to-secondary rounded-full"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">P</span>
-                  </div>
-                </div>
-                <span className="text-xl font-display font-bold">
-                  <span className="text-black">Poll</span>
-                  <span className="bg-gradient-to-r from-secondary to-accent-light bg-clip-text text-transparent">
-                    Fetcher
-                  </span>
-                </span>
-              </div>
+              <Image
+                src="/logo.svg"
+                alt="PollFetcher Logo"
+                width={172}
+                height={38}
+              />
             </Link>
 
             <p className="text-muted-foreground mb-6 max-w-md">
