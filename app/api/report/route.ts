@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Remove Gemini import
+// import { GoogleGenerativeAI } from '@google/generative-ai';
+// Add Azure AI Inference imports
+import ModelClient from "@azure-rest/ai-inference";
+import { AzureKeyCredential } from "@azure/core-auth";
 import { pool } from '@/lib/db';
 
 // Remove initialization from module scope
@@ -8,19 +12,36 @@ import { pool } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   console.log('Environment variables available:', Object.keys(process.env));
-  console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
-  console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
-  
-  // Initialize Google Generative AI inside the handler
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY environment variable is not set.');
+  // Add checks for Azure env vars
+  console.log('AZURE_INFERENCE_SDK_ENDPOINT exists:', !!process.env.AZURE_INFERENCE_SDK_ENDPOINT);
+  console.log('AZURE_INFERENCE_SDK_KEY exists:', !!process.env.AZURE_INFERENCE_SDK_KEY);
+  // Remove Gemini logging
+  // console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+  // console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
+
+  // Initialize Azure AI Inference Client inside the handler
+  const endpoint = process.env.AZURE_INFERENCE_SDK_ENDPOINT;
+  const key = process.env.AZURE_INFERENCE_SDK_KEY;
+
+  if (!endpoint || !key) {
+    console.error('Azure AI Inference environment variables (ENDPOINT or KEY) are not set.');
     return NextResponse.json(
-      { error: 'Server configuration error: Missing API key.' },
+      { error: 'Server configuration error: Missing Azure AI credentials.' },
       { status: 500 }
     );
   }
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const client = new ModelClient(endpoint, new AzureKeyCredential(key));
+
+  // Remove Gemini initialization
+  // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  // if (!process.env.GEMINI_API_KEY) {
+  //   console.error('GEMINI_API_KEY environment variable is not set.');
+  //   return NextResponse.json(
+  //     { error: 'Server configuration error: Missing API key.' },
+  //     { status: 500 }
+  //   );
+  // }
+  // const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   try {
     const { query } = await request.json();
@@ -50,7 +71,8 @@ export async function POST(request: NextRequest) {
     // Step 3: Extract URLs from the top search results
     const relevantUrls = polls
       .map((poll: { url: string }) => poll.url)
-      .filter((url: string | null | undefined): url is string => url && url !== "#"); // Ensure URLs are valid strings
+      // Fix linter error: Use a more robust type guard and add explicit type for url
+      .filter((url: string | null | undefined): url is string => typeof url === 'string' && url !== "#"); // Ensure URLs are valid strings
 
     if (relevantUrls.length === 0) {
       // This case might happen if search results have no valid URLs
@@ -67,8 +89,8 @@ export async function POST(request: NextRequest) {
     
     // Step 5: Generate a comprehensive report using the article content and poll metadata
     // Pass the original 'polls' array for metadata context
-    // Pass the initialized model to the function
-    const report = await generateFullReport(query, articles, polls, model); 
+    // Pass the initialized Azure client to the function
+    const report = await generateFullReport(query, articles, polls, client);
     
     // Step 6: Return the report
     return NextResponse.json({ report });
@@ -110,8 +132,8 @@ async function retrieveArticleText(urls: string[]) {
 }
 
 // Function to generate a comprehensive report using the article content
-// Update function signature to accept the model
-async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], model: any) {
+// Update function signature to accept the Azure client
+async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], client: ModelClient) {
   try {
     // Prepare poll metadata for context (using the original polls array)
     const pollData = polls.map(poll => ({
@@ -139,11 +161,12 @@ async function generateFullReport(query: string, articles: { url: string; text: 
       return truncatedText ? `SOURCE: ${article.url}\n\n${truncatedText}\n\n---\n\n` : '';
     }).filter(content => content).join("");
     
-    // Create a prompt that PRIORITIZES article content AND specifies numbered citations
-    const prompt = `
+    // Define prompts for Azure Chat Completions API
+    const systemPrompt = "You are an intelligent assistant specialized in analyzing survey data and related articles to generate comprehensive reports. Follow the user's instructions precisely regarding source prioritization, formatting, and citation.";
+    const userPrompt = `
 User question: "${query}"
 
-I need you to generate a report that answers this question primarily based on the ARTICLE TEXT below. 
+I need you to generate a report that answers this question primarily based on the ARTICLE TEXT below.
 The poll metadata is secondary and should only be used to supplement your analysis.
 
 ${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
@@ -170,29 +193,64 @@ Then at the end have:
 
 Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
 `;
-    
-    // Generate the report using the passed model
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.3, // Lower temperature for more focus on source material - changed from 1.0 to 0.3
-        maxOutputTokens: 4096
-      }
-    });
-    
-    const response = result.response;
-    return response.text();
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
+
+    // Generate the report using the Azure client
+    const response = await client.path("chat/completions").post({
+        body: {
+          messages: messages,
+          max_tokens: 4000, // Use max_tokens for Azure
+        //  temperature: 0.3,
+          model: "DeepSeek-V3" // Specify the model deployment name
+        },
+        // Ensure correct content type if needed, SDK usually handles this
+        // contentType: "application/json"
+      });
+
+    // Check for successful response (status code 2xx)
+    if (response.status < 200 || response.status >= 300) {
+        let errorBody: any = {};
+        try {
+            // Attempt to read the body which might contain error details
+            errorBody = response.body || { error: { message: 'No error body received' } };
+        } catch (parseError) {
+            console.error("Failed to parse error response body:", parseError);
+            errorBody = { error: { message: 'Failed to parse error body' } };
+        }
+        console.error('Azure AI Inference API error:', response.status, errorBody);
+        // Try to extract a meaningful message
+        const errorMessageDetail = typeof errorBody === 'string' ? errorBody : (errorBody?.error?.message || JSON.stringify(errorBody));
+        throw new Error(`Azure AI request failed with status ${response.status}: ${errorMessageDetail}`);
+    }
+
+    // Extract the response content
+    if (response.body && response.body.choices && response.body.choices.length > 0 && response.body.choices[0].message) {
+      return response.body.choices[0].message.content || "No content received from AI.";
+    } else {
+      console.error("Unexpected Azure AI response structure:", response.body);
+      throw new Error("Failed to parse response from Azure AI.");
+    }
+
   } catch (error) {
-    console.error('Error generating comprehensive report:', error);
+    console.error('Error generating comprehensive report with Azure AI:', error);
     let errorMessage = "I encountered an error while analyzing the data and generating your report.";
-    if (error instanceof Error && error.message.includes('429')) {
-        errorMessage += " The service might be temporarily overloaded. Please try again later.";
-    } else if (error instanceof Error && error.message.includes('prompt was blocked')) {
-        errorMessage += " The content might have triggered safety filters. Please try rephrasing your question.";
+    if (error instanceof Error) {
+        // Check for specific Azure/HTTP errors
+        if (error.message.includes('429') || (error as any).statusCode === 429) {
+             errorMessage += " The service might be temporarily overloaded. Please try again later.";
+        // Check for content filtering messages (common patterns)
+        } else if (error.message.includes('content management policy') || error.message.includes('prompt filtered') || error.message.includes('responsible AI')) {
+             errorMessage += " The content might have triggered safety filters. Please try rephrasing your question.";
+        } else {
+             errorMessage += ` Details: ${error.message}`;
+        }
+    } else {
+         errorMessage += " An unknown error occurred.";
     }
-     else {
-        errorMessage += " Please try again with a more specific question or check the service status.";
-    }
-    return errorMessage;
+    return errorMessage; // Return the error message string
   }
 } 
