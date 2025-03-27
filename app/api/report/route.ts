@@ -1,20 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execAsync = promisify(exec);
 
+// Type definitions for better type safety
+interface PollData {
+  title?: string;
+  url?: string;
+  seendate?: string;
+  chartdata?: {
+    XValue?: string[];
+    XLabel?: string;
+    YValue?: number[];
+    YLabel?: string;
+    Title?: string;
+    Explanation?: string;
+    SurveySource?: string;
+    SurveyYear?: string;
+  };
+  sourcecountry?: string;
+  score?: number;
+}
+
+interface ArticleData {
+  url: string;
+  text: string;
+}
+
+// API response timeout - 2 minutes
+const API_TIMEOUT_MS = 120000;
+
+// Configuration constants
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
+/**
+ * POST handler for the report endpoint
+ * Takes a user query, searches for relevant polls, and generates a comprehensive report
+ */
 export async function POST(request: NextRequest) {
-  console.log('Environment variables available:', Object.keys(process.env));
-  console.log('AZURE_INFERENCE_SDK_ENDPOINT exists:', !!process.env.AZURE_INFERENCE_SDK_ENDPOINT);
-  console.log('AZURE_INFERENCE_SDK_KEY exists:', !!process.env.AZURE_INFERENCE_SDK_KEY);
+  // Setup comprehensive logging for production debugging
+  console.log('Report API called at:', new Date().toISOString());
+  console.log('Environment check:', {
+    nodeEnv: process.env.NODE_ENV,
+    hasAzureEndpoint: !!process.env.AZURE_INFERENCE_SDK_ENDPOINT,
+    hasAzureKey: !!process.env.AZURE_INFERENCE_SDK_KEY?.substring(0, 3) + '...',
+  });
 
-  // Check environment variables
+  // Validate environment variables
   const endpoint = process.env.AZURE_INFERENCE_SDK_ENDPOINT;
   const key = process.env.AZURE_INFERENCE_SDK_KEY;
 
   if (!endpoint || !key) {
-    console.error('Azure AI Inference environment variables (ENDPOINT or KEY) are not set.');
+    console.error('Azure AI Inference environment variables are missing.');
     return NextResponse.json(
       { error: 'Server configuration error: Missing Azure AI credentials.' },
       { status: 500 }
@@ -22,102 +58,160 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { query } = await request.json();
+    // Parse the request
+    const body = await request.json();
+    const { query } = body;
     
-    if (!query) {
-      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+    if (!query || typeof query !== 'string') {
+      return NextResponse.json(
+        { error: 'Query parameter is required and must be a string' },
+        { status: 400 }
+      );
     }
     
-    // Step 2: Feed the question to the search API
-    // Assuming search returns top 10 relevant polls by default or we adjust it later
-    const searchResponse = await fetch(`${request.nextUrl.origin}/api/search?q=${encodeURIComponent(query)}`);
+    console.log('Processing query:', query);
     
-    if (!searchResponse.ok) {
-      throw new Error('Failed to perform search');
-    }
-    
-    const searchResults = await searchResponse.json();
-    // Get the top polls directly from search results
-    const polls = searchResults.polls || []; 
+    // Step 1: Search for relevant polls
+    const polls = await searchForPolls(request.nextUrl.origin, query);
     
     if (polls.length === 0) {
-      return NextResponse.json({ 
-        report: "I couldn't find any relevant survey data for your question. Please try a different query." 
+      console.log('No relevant polls found for query:', query);
+      return NextResponse.json({
+        report: "I couldn't find any relevant survey data for your question. Please try a different query."
       });
     }
     
-    // Step 3: Extract URLs from the top search results
-    const relevantUrls = polls
-      .map((poll: { url: string }) => poll.url)
-      // Fix linter error: Use a more robust type guard and add explicit type for url
-      .filter((url: string | null | undefined): url is string => typeof url === 'string' && url !== "#"); // Ensure URLs are valid strings
-
+    // Step 2: Extract URLs from polls and retrieve article content
+    const relevantUrls = extractValidUrls(polls);
+    
     if (relevantUrls.length === 0) {
-      // This case might happen if search results have no valid URLs
-      return NextResponse.json({ 
+      console.log('No valid URLs found in poll results');
+      return NextResponse.json({
         report: "I found some survey data, but couldn't retrieve associated articles. Generating a report based on available metadata."
-        // Optionally, call generateFullReport with empty articles array
-        // const report = await generateFullReport(query, [], polls); 
-        // return NextResponse.json({ report });
       });
     }
     
-    // Step 4: Retrieve the article text for the selected URLs
+    // Step 3: Retrieve article text for the selected URLs
     const articles = await retrieveArticleText(relevantUrls);
     
-    // Step 5: Generate a comprehensive report using the article content and poll metadata
-    // Pass the original 'polls' array for metadata context
-    // Pass the initialized Azure client to the function
-    const report = await generateFullReport(query, articles, polls, { endpoint, key });
+    // Step 4: Generate the report using Azure AI
+    const report = await generateReport(query, articles, polls, endpoint, key);
     
-    // Step 6: Return the report
+    // Step 5: Return the final report
+    console.log('Successfully generated report for query:', query);
     return NextResponse.json({ report });
     
   } catch (error) {
-    console.error('Error generating report:', error);
+    // Detailed error logging
+    if (error instanceof Error) {
+      console.error('Error in report generation:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    } else {
+      console.error('Unknown error in report generation:', error);
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to generate report' }, 
+      { error: 'Failed to generate report' },
       { status: 500 }
     );
   }
 }
 
-// Function to retrieve article text for the selected URLs
-async function retrieveArticleText(urls: string[]) {
+/**
+ * Search for polls relevant to the user query
+ */
+async function searchForPolls(origin: string, query: string): Promise<PollData[]> {
   try {
-    if (urls.length === 0) return [];
+    console.log(`Calling search API at ${origin}/api/search`);
+    // Set a timeout for the search request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
     
+    const searchResponse = await fetch(
+      `${origin}/api/search?q=${encodeURIComponent(query)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      throw new Error(`Search API returned status ${searchResponse.status}: ${errorText}`);
+    }
+    
+    const searchResults = await searchResponse.json();
+    
+    if (!searchResults.polls || !Array.isArray(searchResults.polls)) {
+      console.warn('Search API returned invalid format:', JSON.stringify(searchResults).substring(0, 200));
+      return [];
+    }
+    
+    return searchResults.polls;
+  } catch (error) {
+    console.error('Error searching for polls:', error);
+    // Return empty array instead of throwing to allow graceful degradation
+    return [];
+  }
+}
+
+/**
+ * Extract valid URLs from poll data
+ */
+function extractValidUrls(polls: PollData[]): string[] {
+  return polls
+    .map(poll => poll.url)
+    .filter((url): url is string => 
+      typeof url === 'string' && 
+      url !== '#' && 
+      url.trim() !== '' && 
+      (url.startsWith('http://') || url.startsWith('https://'))
+    );
+}
+
+/**
+ * Retrieve article text for the given URLs
+ */
+async function retrieveArticleText(urls: string[]): Promise<ArticleData[]> {
+  if (urls.length === 0) return [];
+  
+  try {
     // Create placeholders for the SQL query
     const placeholders = urls.map((_, i) => `$${i + 1}`).join(', ');
     
     // Query the database for the article text
-    // Ensure "ArticleText" is the correct, case-sensitive column name in your 'surveyembeddings' table
+    console.log(`Querying database for ${urls.length} articles`);
     const result = await pool.query(
       `SELECT "Url", "ArticleText" FROM polls WHERE "Url" IN (${placeholders})`,
       urls
     );
     
+    console.log(`Retrieved ${result.rows.length} articles from database`);
+    
     return result.rows.map(row => ({
       url: row.Url,
-      text: row.ArticleText || "" // Use empty string if ArticleText is null
+      text: row.ArticleText || ""
     }));
   } catch (error) {
     console.error('Error retrieving article text:', error);
-    // If the error "column "ArticleText" does not exist" persists, 
-    // double-check the exact column name in your 'surveyembeddings' table.
-    return []; // Return empty array on error
+    // Return empty array to allow graceful degradation
+    return [];
   }
 }
 
-// Function to generate a comprehensive report using the article content
-async function generateFullReport(
-  query: string, 
-  articles: { url: string; text: string }[], 
-  polls: any[], 
-  credentials: { endpoint: string, key: string }
-) {
+/**
+ * Generate a comprehensive report using Azure AI
+ */
+async function generateReport(
+  query: string,
+  articles: ArticleData[],
+  polls: PollData[],
+  endpoint: string,
+  apiKey: string
+): Promise<string> {
   try {
-    // Prepare poll metadata for context (using the original polls array)
+    // Prepare poll metadata
     const pollData = polls.map(poll => ({
       title: poll.title || poll.chartdata?.Title || "Untitled Poll",
       url: poll.url || "#",
@@ -133,7 +227,7 @@ async function generateFullReport(
       country: poll.sourcecountry || ""
     }));
     
-    // Prepare the article content (limit length to avoid context limits)
+    // Prepare article content (with length limits)
     const articleContent = articles.map(article => {
       const text = article.text || ""; 
       const truncatedText = text.length > 4000 
@@ -143,7 +237,7 @@ async function generateFullReport(
       return truncatedText ? `SOURCE: ${article.url}\n\n${truncatedText}\n\n---\n\n` : '';
     }).filter(content => content).join("");
     
-    // Define prompts for Azure Chat Completions API
+    // Define prompts for Azure AI
     const systemPrompt = "You are an intelligent assistant specialized in analyzing survey data and related articles to generate comprehensive reports. Follow the user's instructions precisely regarding source prioritization, formatting, and citation.";
     const userPrompt = `
 User question: "${query}"
@@ -181,60 +275,83 @@ Read the articles carefully and prioritize this content over the metadata. Do no
       { role: "user", content: userPrompt },
     ];
 
-    // Instead of fetch, run a curl command (via child_process.exec) to call the Azure AI endpoint.
     // Ensure the endpoint includes the "/chat/completions" path.
-    const fixedEndpoint = credentials.endpoint.endsWith('/chat/completions')
-      ? credentials.endpoint
-      : `${credentials.endpoint}/chat/completions`;
+    const fixedEndpoint = endpoint.endsWith('/chat/completions')
+      ? endpoint
+      : `${endpoint}/chat/completions`;
     const url = `${fixedEndpoint}?api-version=2024-05-01-preview`;
     console.log(`Attempting to call Azure AI at: ${url}`);
 
-    // Prepare the body payload for curl
-    const requestBody = JSON.stringify({
-      messages: messages,
-      max_tokens: 4000,
-      model: "DeepSeek-V3"
-    });
-
-    // Escape any single quotes in the body to safely embed in the shell command
-    const escapedRequestBody = requestBody.replace(/'/g, "'\\''");
-
-    // Build the curl command
-    const curlCommand = `curl -X POST "${url}" -H "Content-Type: application/json" -H "api-key: ${credentials.key}" -d '${escapedRequestBody}'`;
-    console.log(`Executing command: ${curlCommand}`);
-
-    // Execute the curl command
-    const { stdout, stderr } = await execAsync(curlCommand);
-    if (stderr) {
-      console.error('Curl error:', stderr);
-    }
-
-    // Attempt to parse the JSON response from stdout
-    const responseData = JSON.parse(stdout);
+    // Instead of using curl, use fetch API directly
+    // Implement retry logic for resilience
+    let lastError: Error | null = null;
     
-    if (responseData && responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
-      return responseData.choices[0].message.content || "No content received from AI.";
-    } else {
-      console.error("Unexpected Azure AI response structure:", responseData);
-      throw new Error("Failed to parse response from Azure AI.");
-    }
-
-  } catch (error) {
-    console.error('Error generating comprehensive report with Azure AI:', error);
-    let errorMessage = "I encountered an error while analyzing the data and generating your report.";
-    if (error instanceof Error) {
-        // Check for specific Azure/HTTP errors
-        if (error.message.includes('429') || (error as any).statusCode === 429) {
-             errorMessage += " The service might be temporarily overloaded. Please try again later.";
-        // Check for content filtering messages (common patterns)
-        } else if (error.message.includes('content management policy') || error.message.includes('prompt filtered') || error.message.includes('responsible AI')) {
-             errorMessage += " The content might have triggered safety filters. Please try rephrasing your question.";
-        } else {
-             errorMessage += ` Details: ${error.message}`;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`Retry attempt ${attempt} for Azure AI call`);
+          // Add delay between retries
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
         }
-    } else {
-         errorMessage += " An unknown error occurred.";
+        
+        // Set up request with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': apiKey
+          },
+          body: JSON.stringify({
+            messages: messages,
+            max_tokens: 4000,
+            model: "DeepSeek-V3"
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Azure AI API error (${response.status}):`, errorText);
+          
+          // For 429 (rate limit) errors, retry
+          if (response.status === 429) {
+            lastError = new Error(`Rate limit exceeded: ${errorText}`);
+            continue; // Try again
+          }
+          
+          throw new Error(`Azure AI API returned status ${response.status}: ${errorText}`);
+        }
+        
+        const responseData = await response.json();
+        
+        if (!responseData?.choices?.[0]?.message?.content) {
+          console.error('Unexpected Azure AI response structure:', JSON.stringify(responseData).substring(0, 200));
+          throw new Error('Unexpected response format from Azure AI');
+        }
+        
+        return responseData.choices[0].message.content;
+      } catch (error) {
+        console.error(`Azure AI call attempt ${attempt + 1} failed:`, error);
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // Don't retry if it's an abort error (timeout)
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new Error('Azure AI request timed out after ' + (API_TIMEOUT_MS / 1000) + ' seconds');
+        }
+      }
     }
-    return errorMessage; // Return the error message string
+    
+    // If we get here, all retries failed
+    throw lastError || new Error('Failed to call Azure AI after multiple attempts');
+  } catch (error) {
+    console.error('Error in AI report generation:', error);
+    return `I encountered an error while analyzing the data and generating your report. ${
+      error instanceof Error ? `Details: ${error.message}` : ''
+    }`;
   }
 }
