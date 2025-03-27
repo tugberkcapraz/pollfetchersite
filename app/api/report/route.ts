@@ -1,29 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Remove Gemini import
-// import { GoogleGenerativeAI } from '@google/generative-ai';
-// Add Azure AI Inference imports
-import ModelClient from "@azure-rest/ai-inference";
-// Explicitly import the type if available, or use InstanceType later
-// import type { ModelClient as ModelClientType } from "@azure-rest/ai-inference";
-import { AzureKeyCredential } from "@azure/core-auth";
-// Explicitly import the type if available
-// import type { AzureKeyCredential as AzureKeyCredentialType } from "@azure/core-auth";
 import { pool } from '@/lib/db';
-
-// Remove initialization from module scope
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-// const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 
 export async function POST(request: NextRequest) {
   console.log('Environment variables available:', Object.keys(process.env));
-  // Add checks for Azure env vars
   console.log('AZURE_INFERENCE_SDK_ENDPOINT exists:', !!process.env.AZURE_INFERENCE_SDK_ENDPOINT);
   console.log('AZURE_INFERENCE_SDK_KEY exists:', !!process.env.AZURE_INFERENCE_SDK_KEY);
-  // Remove Gemini logging
-  // console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
-  // console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
 
-  // Initialize Azure AI Inference Client inside the handler
+  // Check environment variables
   const endpoint = process.env.AZURE_INFERENCE_SDK_ENDPOINT;
   const key = process.env.AZURE_INFERENCE_SDK_KEY;
 
@@ -34,20 +20,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-  // Ensure AzureKeyCredential is treated as a constructor
-  const credential = new AzureKeyCredential(key);
-  const client = new ModelClient(endpoint, credential);
-
-  // Remove Gemini initialization
-  // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-  // if (!process.env.GEMINI_API_KEY) {
-  //   console.error('GEMINI_API_KEY environment variable is not set.');
-  //   return NextResponse.json(
-  //     { error: 'Server configuration error: Missing API key.' },
-  //     { status: 500 }
-  //   );
-  // }
-  // const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   try {
     const { query } = await request.json();
@@ -96,7 +68,7 @@ export async function POST(request: NextRequest) {
     // Step 5: Generate a comprehensive report using the article content and poll metadata
     // Pass the original 'polls' array for metadata context
     // Pass the initialized Azure client to the function
-    const report = await generateFullReport(query, articles, polls, client);
+    const report = await generateFullReport(query, articles, polls, { endpoint, key });
     
     // Step 6: Return the report
     return NextResponse.json({ report });
@@ -138,9 +110,12 @@ async function retrieveArticleText(urls: string[]) {
 }
 
 // Function to generate a comprehensive report using the article content
-// Update function signature to accept the Azure client type
-// Use InstanceType<typeof ModelClient> to get the instance type from the constructor value
-async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], client: InstanceType<typeof ModelClient>) {
+async function generateFullReport(
+  query: string, 
+  articles: { url: string; text: string }[], 
+  polls: any[], 
+  credentials: { endpoint: string, key: string }
+) {
   try {
     // Prepare poll metadata for context (using the original polls array)
     const pollData = polls.map(poll => ({
@@ -206,39 +181,41 @@ Read the articles carefully and prioritize this content over the metadata. Do no
       { role: "user", content: userPrompt },
     ];
 
-    // Generate the report using the Azure client
-    const response = await client.path("chat/completions").post({
-        body: {
-          messages: messages,
-          max_tokens: 4000, // Use max_tokens for Azure
-          // temperature: 0.3, // Temperature was commented out, ensure this is intended
-          model: "DeepSeek-V3" // Specify the model deployment name - Make sure 'DeepSeek-V3' is the correct deployment name in Azure
-        },
-        // Ensure correct content type if needed, SDK usually handles this
-        // contentType: "application/json"
-      });
+    // Instead of fetch, run a curl command (via child_process.exec) to call the Azure AI endpoint.
+    // Ensure the endpoint includes the "/chat/completions" path.
+    const fixedEndpoint = credentials.endpoint.endsWith('/chat/completions')
+      ? credentials.endpoint
+      : `${credentials.endpoint}/chat/completions`;
+    const url = `${fixedEndpoint}?api-version=2024-05-01-preview`;
+    console.log(`Attempting to call Azure AI at: ${url}`);
 
-    // Check for successful response (status code 2xx)
-    if (response.status < 200 || response.status >= 300) {
-        let errorBody: any = {};
-        try {
-            // Attempt to read the body which might contain error details
-            errorBody = response.body || { error: { message: 'No error body received' } };
-        } catch (parseError) {
-            console.error("Failed to parse error response body:", parseError);
-            errorBody = { error: { message: 'Failed to parse error body' } };
-        }
-        console.error('Azure AI Inference API error:', response.status, errorBody);
-        // Try to extract a meaningful message
-        const errorMessageDetail = typeof errorBody === 'string' ? errorBody : (errorBody?.error?.message || JSON.stringify(errorBody));
-        throw new Error(`Azure AI request failed with status ${response.status}: ${errorMessageDetail}`);
+    // Prepare the body payload for curl
+    const requestBody = JSON.stringify({
+      messages: messages,
+      max_tokens: 4000,
+      model: "DeepSeek-V3"
+    });
+
+    // Escape any single quotes in the body to safely embed in the shell command
+    const escapedRequestBody = requestBody.replace(/'/g, "'\\''");
+
+    // Build the curl command
+    const curlCommand = `curl -X POST "${url}" -H "Content-Type: application/json" -H "api-key: ${credentials.key}" -d '${escapedRequestBody}'`;
+    console.log(`Executing command: ${curlCommand}`);
+
+    // Execute the curl command
+    const { stdout, stderr } = await execAsync(curlCommand);
+    if (stderr) {
+      console.error('Curl error:', stderr);
     }
 
-    // Extract the response content
-    if (response.body && response.body.choices && response.body.choices.length > 0 && response.body.choices[0].message) {
-      return response.body.choices[0].message.content || "No content received from AI.";
+    // Attempt to parse the JSON response from stdout
+    const responseData = JSON.parse(stdout);
+    
+    if (responseData && responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
+      return responseData.choices[0].message.content || "No content received from AI.";
     } else {
-      console.error("Unexpected Azure AI response structure:", response.body);
+      console.error("Unexpected Azure AI response structure:", responseData);
       throw new Error("Failed to parse response from Azure AI.");
     }
 
@@ -260,4 +237,4 @@ Read the articles carefully and prioritize this content over the metadata. Do no
     }
     return errorMessage; // Return the error message string
   }
-} 
+}
