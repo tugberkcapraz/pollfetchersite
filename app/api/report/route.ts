@@ -125,30 +125,84 @@ export async function POST(request: NextRequest) {
  */
 async function searchForPolls(origin: string, query: string): Promise<PollData[]> {
   try {
-    console.log(`Calling search API at ${origin}/api/search`);
-    // Set a timeout for the search request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+    console.log('Performing search for query:', query);
     
-    const searchResponse = await fetch(
-      `${origin}/api/search?q=${encodeURIComponent(query)}`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timeoutId);
+    // Use direct database query instead of internal API call
+    // This is more reliable in production environments like Azure Web App
+    console.log('Executing direct database query instead of internal API call');
     
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      throw new Error(`Search API returned status ${searchResponse.status}: ${errorText}`);
+    try {
+      // Connect to the database and execute the vector search directly
+      // This is the same query used in the search API
+      const result = await pool.query('SELECT * FROM pollsearch2($1, 100)', [query]);
+      
+      console.log(`Database returned ${result.rows.length} poll results`);
+      
+      if (!result.rows || result.rows.length === 0) {
+        console.log('No poll results found in database for query:', query);
+        return [];
+      }
+      
+      // Process the results exactly as the search API would
+      const polls = result.rows.map((row: any) => {
+        // Parse the JSON string in chartdata if it's a string
+        let chartdata = row.chartdata;
+        if (typeof chartdata === 'string') {
+          try {
+            chartdata = JSON.parse(chartdata);
+          } catch (e) {
+            console.error('Error parsing chartdata JSON:', e);
+            chartdata = {}; // Fallback to empty object
+          }
+        }
+        
+        return {
+          title: row.title,
+          url: row.url,
+          seendate: row.seendate,
+          chartdata: chartdata,
+          sourcecountry: row.sourcecountry,
+          score: row.score
+        };
+      });
+      
+      return polls;
+    } catch (dbError) {
+      console.error('Database query error in searchForPolls:', dbError);
+      
+      // If database query fails for any reason, fall back to HTTP API call
+      // This is a backup approach in case direct DB access has issues
+      console.log('Falling back to API call after database error');
+      
+      // Original implementation as fallback
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+      
+      // Generate the complete URL (sometimes origin might not be fully qualified in production)
+      // Use a fully qualified URL if possible
+      const apiUrl = origin.includes('://') 
+        ? `${origin}/api/search?q=${encodeURIComponent(query)}`
+        : `https://${process.env.WEBSITE_HOSTNAME || origin}/api/search?q=${encodeURIComponent(query)}`;
+      
+      console.log(`Calling search API at ${apiUrl}`);
+      
+      const searchResponse = await fetch(apiUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        throw new Error(`Search API returned status ${searchResponse.status}: ${errorText}`);
+      }
+      
+      const searchResults = await searchResponse.json();
+      
+      if (!searchResults.polls || !Array.isArray(searchResults.polls)) {
+        console.warn('Search API returned invalid format:', JSON.stringify(searchResults).substring(0, 200));
+        return [];
+      }
+      
+      return searchResults.polls;
     }
-    
-    const searchResults = await searchResponse.json();
-    
-    if (!searchResults.polls || !Array.isArray(searchResults.polls)) {
-      console.warn('Search API returned invalid format:', JSON.stringify(searchResults).substring(0, 200));
-      return [];
-    }
-    
-    return searchResults.polls;
   } catch (error) {
     console.error('Error searching for polls:', error);
     // Return empty array instead of throwing to allow graceful degradation
