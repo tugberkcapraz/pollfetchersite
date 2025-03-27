@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { GoogleGenerativeAI } from '@google/generative-ai';
 // Add Azure AI Inference imports
 import ModelClient from "@azure-rest/ai-inference";
+// Explicitly import the type if available, or use InstanceType later
+// import type { ModelClient as ModelClientType } from "@azure-rest/ai-inference";
 import { AzureKeyCredential } from "@azure/core-auth";
+// Explicitly import the type if available
+// import type { AzureKeyCredential as AzureKeyCredentialType } from "@azure/core-auth";
 import { pool } from '@/lib/db';
 
 // Remove initialization from module scope
@@ -30,7 +34,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-  const client = new ModelClient(endpoint, new AzureKeyCredential(key));
+  // Ensure AzureKeyCredential is treated as a constructor
+  const credential = new AzureKeyCredential(key);
+  const client = new ModelClient(endpoint, credential);
 
   // Remove Gemini initialization
   // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -132,8 +138,9 @@ async function retrieveArticleText(urls: string[]) {
 }
 
 // Function to generate a comprehensive report using the article content
-// Update function signature to accept the Azure client
-async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], client: ModelClient) {
+// Update function signature to accept the Azure client type
+// Use InstanceType<typeof ModelClient> to get the instance type from the constructor value
+async function generateFullReport(query: string, articles: { url: string; text: string }[], polls: any[], client: InstanceType<typeof ModelClient>) {
   try {
     // Prepare poll metadata for context (using the original polls array)
     const pollData = polls.map(poll => ({
@@ -204,8 +211,8 @@ Read the articles carefully and prioritize this content over the metadata. Do no
         body: {
           messages: messages,
           max_tokens: 4000, // Use max_tokens for Azure
-        //  temperature: 0.3,
-          model: "DeepSeek-V3" // Specify the model deployment name
+          // temperature: 0.3, // Temperature was commented out, ensure this is intended
+          model: "DeepSeek-V3" // Specify the model deployment name - Make sure 'DeepSeek-V3' is the correct deployment name in Azure
         },
         // Ensure correct content type if needed, SDK usually handles this
         // contentType: "application/json"
