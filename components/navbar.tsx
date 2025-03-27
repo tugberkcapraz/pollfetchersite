@@ -25,11 +25,9 @@ export function Navbar() {
   const toggleMenu = () => setIsOpen(!isOpen)
 
   const navLinks = [
-    { name: "Home", path: "/" },
-    { name: "Explore", path: "/explore" },
-    { name: "Features", path: "/features" },
-    { name: "About", path: "/about" },
-    { name: "Reports", path: "/report" },
+    { name: "Generate Reports", path: "/report" },
+    { name: "Curated Articles", path: "/articles" },
+    { name: "Platform Metrics", path: "/metrics" },
   ]
 
   return (
@@ -40,15 +38,17 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <Image
-              src="/logo.svg"
-              alt="PollFetcher Logo"
-              width={170}
-              height={32}
-              priority
-            />
-          </Link>
+          <div className="flex-1 flex justify-start">
+            <Link href="/" className="flex items-center space-x-2">
+              <Image
+                src="/logo.svg"
+                alt="PollFetcher Logo"
+                width={170}
+                height={32}
+                priority
+              />
+            </Link>
+          </div>
 
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
@@ -75,13 +75,8 @@ export function Navbar() {
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center space-x-4">
-            <button className="p-2 rounded-full bg-muted hover:bg-border transition-colors">
-              <Search className="w-5 h-5 text-secondary" />
-            </button>
-            <Link href="/metrics" className="themed-button text-sm">
-              Metrics
-            </Link>
+          <div className="flex-1 hidden md:flex justify-end">
+            {/* This div takes up space to balance the logo */}
           </div>
 
           <button
@@ -125,16 +120,6 @@ export function Navbar() {
                   </motion.div>
                 ))}
               </nav>
-
-              <div className="mt-auto">
-                <Link
-                  href="/metrics"
-                  className="themed-button w-full flex items-center justify-center text-center"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Metrics
-                </Link>
-              </div>
             </div>
           </motion.div>
         )}
