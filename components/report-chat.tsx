@@ -1,13 +1,14 @@
 "use client"
 
-import React from 'react'
+import React, { RefObject } from 'react'
 import { Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import { motion } from 'framer-motion'
 
 interface ReportChatProps {
   messages: Array<{ role: 'user' | 'assistant', content: string }>;
   isLoading: boolean;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
 }
 
 export default function ReportChat({ messages, isLoading, messagesEndRef }: ReportChatProps) {
