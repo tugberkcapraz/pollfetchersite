@@ -17,16 +17,16 @@ export default function ReportChat({ messages, isLoading, messagesEndRef }: Repo
       return <p className="whitespace-pre-wrap">{content}</p>;
     }
     
-    // For assistant messages, apply blue color styling to markdown headings
+    // For assistant messages, apply red color styling to markdown elements
     return (
       <div className="prose 
-                    prose-headings:text-secondary
-                    prose-h1:text-secondary
-                    prose-h2:text-secondary
-                    prose-h3:text-secondary
+                    prose-headings:text-red-600 
+                    prose-h1:text-red-600 
+                    prose-h2:text-red-600 
+                    prose-h3:text-red-600
                     prose-p:text-gray-900 
                     prose-li:text-gray-900 
-                    prose-strong:text-secondary
+                    prose-strong:text-red-600
                     prose-a:text-blue-600
                     max-w-none">
         <ReactMarkdown>

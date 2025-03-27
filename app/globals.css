@@ -236,6 +236,7 @@
 }
 
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: #f0f0f0;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
 }
