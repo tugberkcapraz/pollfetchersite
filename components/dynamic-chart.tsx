@@ -7,6 +7,7 @@ import { ChartContainer } from "@/components/ui/chart"
 import type { SurveyData } from "@/lib/getData"
 import { motion, useInView } from "framer-motion"
 import Link from "next/link"
+import Image from 'next/image'
 import { ExternalLink, Download, Code, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -120,7 +121,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
       variants={variants}
       className="bg-muted border border-border rounded-lg overflow-hidden flex flex-col"
     >
-      <Card className="border-0 bg-transparent text-card-foreground flex-grow">
+      <Card className="border-0 bg-transparent text-card-foreground flex-grow flex flex-col h-full">
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div className="flex-1">
             <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
@@ -167,7 +168,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
             </Tooltip>
           </TooltipProvider>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
           <div className="h-64">
             <ChartContainer
               config={{
@@ -229,8 +230,8 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
           <p className="mt-4 text-sm text-muted-foreground">{data.survey_Explanation}</p>
         </CardContent>
         {data.survey_URL && (
-          // Update CardFooter link colors
-          <CardFooter className="border-t border-border pt-4">
+          // Update CardFooter layout and add logo
+          <CardFooter className="border-t border-border pt-4 flex justify-between items-center">
             <Link
               href={data.survey_URL}
               target="_blank"
@@ -239,6 +240,16 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
               className="text-sm text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors"
             >
               View Source <ExternalLink size={14} />
+            </Link>
+            {/* Add clickable logo linking to homepage */}
+            <Link href="/" aria-label="Homepage">
+              <Image
+                src="/logo.svg"
+                alt="Site Logo"
+                width={80} // Adjust width as needed
+                height={20} // Adjust height as needed
+                className="opacity-70 hover:opacity-100 transition-opacity"
+              />
             </Link>
           </CardFooter>
         )}
