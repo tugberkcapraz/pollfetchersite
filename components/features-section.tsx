@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { motion, useInView } from "framer-motion"
-import { Search, BarChart2, Shield, Zap, Globe, Lock } from "lucide-react"
+import { Search, BarChart2, History, FileText, Globe, CodeXml } from "lucide-react"
 
 export function FeaturesSection() {
   const ref = useRef(null)
@@ -17,31 +17,31 @@ export function FeaturesSection() {
     },
     {
       icon: <BarChart2 className="w-10 h-10 text-elegant-accent1" />,
-      title: "Dynamic Visualization",
+      title: "Embeddable Charts",
       description:
-        "Transform complex data into stunning interactive charts that reveal patterns and insights at a glance.",
+        "Our embeddable charts provide a seamless way to integrate dynamic visualizations into your own projects.",
     },
     {
-      icon: <Shield className="w-10 h-10 text-elegant-accent2" />,
-      title: "Source Verification",
+      icon: <History className="w-10 h-10 text-elegant-accent2" />,
+      title: "Historical Data",
       description:
-        "Every poll is verified for authenticity with complete transparency about methodology and data collection.",
+        "We provide historical data from past polls and surveys dating back to 2017, allowing you to see how public opinion has evolved over time.",
     },
     {
-      icon: <Zap className="w-10 h-10 text-elegant-accent3" />,
-      title: "Real-time Analysis",
-      description: "Get instant analysis of trends, correlations, and anomalies as new data becomes available.",
+      icon: <FileText className="w-10 h-10 text-elegant-accent3" />,
+      title: "Report Generation",
+      description: "You can generate reports about polls and surveys, with detailed analysis and insights.",
     },
     {
       icon: <Globe className="w-10 h-10 text-elegant-gold-light" />,
       title: "Global Coverage",
-      description: "Access polls and surveys from around the world, with data from diverse sources and regions.",
+      description: "We cover polls and surveys from around the world, with data from diverse sources and languages.",
     },
     {
-      icon: <Lock className="w-10 h-10 text-elegant-gold-dark" />,
-      title: "Data Privacy",
+      icon: <CodeXml className="w-10 h-10 text-elegant-gold-dark" />,
+      title: "API Access",
       description:
-        "Your search history and preferences are protected with enterprise-grade security and privacy controls.",
+        "You can access our data through our API, allowing you to integrate our data into your own projects.",
     },
   ]
 
