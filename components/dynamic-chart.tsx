@@ -7,6 +7,7 @@ import { ChartContainer } from "@/components/ui/chart"
 import type { SurveyData } from "@/lib/getData"
 import { motion, useInView } from "framer-motion"
 import Link from "next/link"
+import Image from 'next/image'
 import { ExternalLink, Download, Code, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -120,9 +121,9 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
       variants={variants}
       className="bg-muted border border-border rounded-lg overflow-hidden flex flex-col"
     >
-      <Card className="border-0 bg-transparent text-card-foreground flex-grow">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="flex-1">
+      <Card className="border-0 bg-transparent text-card-foreground flex-grow flex flex-col h-full">
+        <CardHeader className="items-center">
+          <div className="text-center">
             <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
             <CardDescription className="text-muted-foreground">
               {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
@@ -130,44 +131,8 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
               {data.survey_SeenDate && ` • Seen: ${new Date(data.survey_SeenDate).toLocaleDateString()}`}
             </CardDescription>
           </div>
-          <TooltipProvider>
-            {data.survey_Id && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`text-muted-foreground hover:text-foreground ${showEmbed ? 'bg-accent' : ''}`}
-                    onClick={() => setShowEmbed(!showEmbed)}
-                    aria-label="Embed chart"
-                  >
-                    <Code className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Embed Chart</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={handleDownload}
-                  aria-label="Download chart data"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Download JSON</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
           <div className="h-64">
             <ChartContainer
               config={{
@@ -228,17 +193,81 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">{data.survey_Explanation}</p>
         </CardContent>
-        {data.survey_URL && (
-          // Update CardFooter link colors
-          <CardFooter className="border-t border-border pt-4">
-            <Link
-              href={data.survey_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              // Use secondary (blue) for link, hover slightly darker/lighter
-              className="text-sm text-secondary hover:text-secondary/80 flex items-center gap-1 transition-colors"
-            >
-              View Source <ExternalLink size={14} />
+        {(data.survey_URL || data.survey_Id) && (
+          <CardFooter className="border-t border-border pt-4 flex justify-between items-center">
+            {/* Left Group: Icons */}
+            <div className="flex items-center gap-1">
+              <TooltipProvider>
+                {/* View Source Icon Button (conditionally rendered) */}
+                {data.survey_URL && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* Wrap button in Link for navigation */}
+                      <Link href={data.survey_URL} target="_blank" rel="noopener noreferrer" aria-label="View Source">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground h-8 w-8" // Consistent size
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View Source</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Embed Icon Button (conditionally rendered) */}
+                {data.survey_Id && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`text-muted-foreground hover:text-foreground ${showEmbed ? 'bg-accent' : ''} h-8 w-8`}
+                        onClick={() => setShowEmbed(!showEmbed)}
+                        aria-label="Embed chart"
+                      >
+                        <Code className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Embed Chart</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Download Icon Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground h-8 w-8"
+                      onClick={handleDownload}
+                      aria-label="Download chart data"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Download JSON</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Right Group: Logo */}
+            <Link href="/" aria-label="Homepage">
+              <Image
+                src="/logo.svg"
+                alt="Site Logo"
+                width={80}
+                height={40}
+                className="opacity-70 hover:opacity-100 transition-opacity" // Removed ml-2
+              />
             </Link>
           </CardFooter>
         )}
