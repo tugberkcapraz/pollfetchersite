@@ -1,13 +1,15 @@
 "use client"
 
 import { useRef } from "react"
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer } from "@/components/ui/chart"
 import type { SurveyData } from "@/lib/getData"
 import { motion, useInView } from "framer-motion"
 import Link from "next/link"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Download } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface DynamicChartProps {
   data: SurveyData
@@ -65,6 +67,20 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
     return null;
   };
 
+  // Function to handle downloading chart data as JSON
+  const handleDownload = () => {
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(data, null, 2) // Pretty print JSON
+    )}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    // Generate a filename based on the chart title, provide a fallback
+    const safeTitle = data.survey_Title ?? 'chart'; // Use 'chart' if title is undefined
+    const fileName = `${safeTitle.toLowerCase().replace(/\s+/g, '-')}-data.json`;
+    link.download = fileName;
+    link.click();
+  };
+
   return (
     <motion.div
       ref={ref}
@@ -75,12 +91,32 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
       className="bg-muted border border-border rounded-lg overflow-hidden"
     >
       <Card className="border-0 bg-transparent text-card-foreground">
-        <CardHeader>
-          <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
-            {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
+              {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
+            </CardDescription>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={handleDownload}
+                  aria-label="Download chart data"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Download chart data (JSON)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -109,7 +145,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                 </PieChart>
               ) : (
                 <BarChart data={chartData}>
@@ -128,7 +164,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                     stroke="hsl(var(--foreground))" // Explicitly set axis/tick color
                     tickMargin={8}
                   />
-                  <Tooltip
+                  <RechartsTooltip
                     cursor={false} // Keep cursor invisible for bar chart
                     content={<CustomTooltip />}
                   />
