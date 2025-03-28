@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
+import { DynamicChart } from "@/components/dynamic-chart"
+import type { SurveyData } from "@/lib/getData"
 
 type Poll = {
   title: string
@@ -20,8 +22,10 @@ type Poll = {
     SurveySource?: string
     SurveyCustomer?: string
     SurveyYear?: string
+    ChartType?: "bar" | "pie"
   }
   sourcecountry: string
+  id?: string
 }
 
 // Directly import these from wherever your SurveyData type is defined
@@ -38,6 +42,7 @@ interface SurveyData {
   survey_URL: string;
   survey_SourceCountry: string;
   survey_SeenDate: string;
+  survey_Id?: string;
 }
 
 export function RandomPollsGallery() {
@@ -104,22 +109,20 @@ export function RandomPollsGallery() {
   
   // Convert poll data to SurveyData format for DynamicChart
   const surveyData: SurveyData = {
-    survey_Title: currentPoll.title,
+    survey_Id: currentPoll.id,
+    survey_Title: currentPoll.title || "Untitled Poll",
     survey_XValue: currentPoll.chartdata.XValue || [],
     survey_YValue: currentPoll.chartdata.YValue || [],
     survey_XLabel: currentPoll.chartdata.XLabel || "",
     survey_YLabel: currentPoll.chartdata.YLabel || "",
-    survey_Explanation: currentPoll.chartdata.Explanation || "",
-    survey_SurveySource: currentPoll.chartdata.SurveySource || "",
+    survey_Explanation: currentPoll.chartdata.Explanation || "No explanation provided.",
+    survey_SurveySource: currentPoll.chartdata.SurveySource || "Unknown Source",
     survey_SurveyYear: currentPoll.chartdata.SurveyYear || "",
-    survey_ChartType: "bar", // Explicitly typed as "bar"
-    survey_URL: currentPoll.url || "#",
+    survey_ChartType: currentPoll.chartdata.ChartType || "bar",
+    survey_URL: currentPoll.url || "",
     survey_SourceCountry: currentPoll.sourcecountry || "",
     survey_SeenDate: currentPoll.seendate || new Date().toISOString()
   }
-
-  // Import this component where it's needed
-  const DynamicChartImport = require("@/components/dynamic-chart").DynamicChart
 
   return (
     <div className="relative py-8">
@@ -141,8 +144,7 @@ export function RandomPollsGallery() {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Use DynamicChartImport instead of importing */}
-            <DynamicChartImport data={surveyData} />
+            <DynamicChart data={surveyData} />
           </motion.div>
         </AnimatePresence>
         
