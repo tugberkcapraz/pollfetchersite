@@ -61,16 +61,51 @@ export default function EmbedPage() {
       maxHeight: '600px', // Optional: Max height
   };
 
-  if (loading) {
-    return <div style={containerStyle}>Loading chart...</div>;
-  }
-
   if (error) {
-    return <div style={containerStyle}>Error: {error}</div>;
+    return (
+      <div style={containerStyle} className="text-center">
+        <div>
+          <h2 style={{ marginBottom: '0.5rem', fontWeight: 'bold', color: '#e11d48' }}>Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!pollData) {
-    return <div style={containerStyle}>No data available for this poll.</div>;
+    return (
+      <div style={containerStyle} className="text-center">
+        <div>
+          <h2 style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>No Data Available</h2>
+          <p>No chart data available for this poll.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Add a better loader
+  if (loading) {
+    return (
+      <div style={containerStyle} className="text-center">
+        <div>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '3px solid rgba(0, 0, 0, 0.1)', 
+            borderTopColor: '#3b82f6', 
+            borderRadius: '50%', 
+            margin: '0 auto 1rem',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <p>Loading chart...</p>
+          <style jsx>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
   }
 
   // Render only the chart, maybe wrapped for sizing

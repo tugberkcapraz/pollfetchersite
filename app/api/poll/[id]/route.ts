@@ -6,15 +6,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Fix 1: Make sure we await the params object
-  const id = await Promise.resolve(params.id);
+  // Fix: Proper way to await the params object in Next.js 15
+  const { id } = await params;
 
   if (!id) {
     return NextResponse.json({ error: 'Poll ID is required' }, { status: 400 });
   }
 
   try {
-    // Fix 2: Remove "SurveySource" from the query since it doesn't exist in the table
+    // Query using the exact column names from surveyembeddings table
     const result = await pool.query(
       `SELECT 
          id::text, "Title", "Url", "Seendate", "ChartData", "SourceCountry", "Language", "Domain"
@@ -42,7 +42,7 @@ export async function GET(
         chartdata = {}; // Ensure chartdata is an object
     }
 
-    // Fix 3: Get SurveySource only from chartdata or use a default value
+    // Create properly formatted survey data
     const pollData: SurveyData = {
       survey_Id: row.id,
       survey_Title: chartdata.Title ?? row.Title ?? "Untitled Poll",
@@ -51,7 +51,7 @@ export async function GET(
       survey_XLabel: chartdata.XLabel ?? "",
       survey_YLabel: chartdata.YLabel ?? "",
       survey_Explanation: chartdata.Explanation ?? "",
-      survey_SurveySource: chartdata.SurveySource ?? "Unknown Source", // No longer using row.SurveySource
+      survey_SurveySource: chartdata.SurveySource ?? "Unknown Source",
       survey_SurveyYear: chartdata.SurveyYear ?? "",
       survey_ChartType: 'bar',
       survey_URL: row.Url ?? "#",
@@ -60,7 +60,6 @@ export async function GET(
     };
 
     return NextResponse.json(pollData);
-
   } catch (error) {
     console.error(`Database query error for poll id ${id}:`, error);
     return NextResponse.json(
