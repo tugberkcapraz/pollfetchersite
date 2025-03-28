@@ -265,7 +265,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                 src="/logo.svg"
                 alt="Site Logo"
                 width={80}
-                height={20}
+                height={40}
                 className="opacity-70 hover:opacity-100 transition-opacity" // Removed ml-2
               />
             </Link>
