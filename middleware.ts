@@ -33,6 +33,17 @@ export function middleware(request: NextRequest) {
     return setCorsHeaders(response);
   }
 
+  // Allow embedding from any origin when accessing embed routes
+  if (request.nextUrl.pathname.startsWith('/embed')) {
+    // Remove X-Frame-Options to allow embedding in iframes
+    response.headers.delete('X-Frame-Options');
+    // Set Content-Security-Policy to allow embedding
+    response.headers.set(
+      'Content-Security-Policy',
+      "frame-ancestors 'self' *;"
+    );
+  }
+
   // For other routes, just continue
   return response;
 }
@@ -40,4 +51,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Match only the report API route and potentially other API routes if needed
   matcher: '/api/report',
+  // Only run middleware on embed routes
+  matcher: '/embed/:path*',
 } 
