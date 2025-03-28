@@ -168,7 +168,7 @@ async function searchForPolls(origin: string, query: string): Promise<PollData[]
     try {
       // Connect to the database and execute the vector search directly
       // This is the same query used in the search API
-      const result = await pool.query('SELECT * FROM pollsearch2($1, 100)', [query]);
+      const result = await pool.query('SELECT * FROM pollsearcher($1, 100)', [query]);
       
       console.log(`Database returned ${result.rows.length} poll results`);
       
@@ -191,6 +191,7 @@ async function searchForPolls(origin: string, query: string): Promise<PollData[]
         }
         
         return {
+          id: row.id,
           title: row.title,
           url: row.url,
           seendate: row.seendate,

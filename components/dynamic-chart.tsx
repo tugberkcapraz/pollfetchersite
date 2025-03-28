@@ -1,22 +1,35 @@
 "use client"
 
-import { useRef } from "react"
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts"
+import { useRef, useState } from "react"
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer } from "@/components/ui/chart"
 import type { SurveyData } from "@/lib/getData"
 import { motion, useInView } from "framer-motion"
 import Link from "next/link"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Download, Code, Copy, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface DynamicChartProps {
   data: SurveyData
   index?: number
 }
 
+// Function to get base URL (client-side safe)
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  // Fallback for server-side (won't be perfect, use environment variables if needed)
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+};
+
 export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, amount: 0.2 })
+  const [showEmbed, setShowEmbed] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // Prepare data for chart
   const chartData = data.survey_XValue.map((label, i) => ({
@@ -65,6 +78,39 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
     return null;
   };
 
+  // Function to handle downloading chart data as JSON
+  const handleDownload = () => {
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(data, null, 2) // Pretty print JSON
+    )}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    // Generate a filename based on the chart title, provide a fallback
+    const safeTitle = data.survey_Title ?? 'chart'; // Use 'chart' if title is undefined
+    const fileName = `${safeTitle.toLowerCase().replace(/\s+/g, '-')}-data.json`;
+    link.download = fileName;
+    link.click();
+  };
+
+  // Generate iframe code
+  const embedCode = `<iframe src="${getBaseUrl()}/embed/${data.survey_Id}" width="600" height="400" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="${data.survey_Title || 'Chart'}"></iframe>`;
+
+  // Function to handle copying embed code
+  const handleCopyEmbed = () => {
+    navigator.clipboard.writeText(embedCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    }).catch(err => {
+      console.error('Failed to copy embed code:', err);
+      // Maybe show an error message to the user
+    });
+  };
+
+  if (!data.survey_Id) {
+    console.warn("DynamicChart missing survey_Id, embed feature disabled.", data);
+    // Optionally return null or a placeholder if ID is critical
+  }
+
   return (
     <motion.div
       ref={ref}
@@ -72,15 +118,54 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
       initial="hidden"
       animate={isInView ? "visible" : "hidden"}
       variants={variants}
-      className="bg-muted border border-border rounded-lg overflow-hidden"
+      className="bg-muted border border-border rounded-lg overflow-hidden flex flex-col"
     >
-      <Card className="border-0 bg-transparent text-card-foreground">
-        <CardHeader>
-          <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
-            {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
-          </CardDescription>
+      <Card className="border-0 bg-transparent text-card-foreground flex-grow">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle className="text-xl font-display">{data.survey_Title}</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              {data.survey_SurveySource} • {data.survey_SurveyYear || "N/A"}
+              {data.survey_SourceCountry && ` • ${data.survey_SourceCountry}`}
+              {data.survey_SeenDate && ` • Seen: ${new Date(data.survey_SeenDate).toLocaleDateString()}`}
+            </CardDescription>
+          </div>
+          <TooltipProvider>
+            {data.survey_Id && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`text-muted-foreground hover:text-foreground ${showEmbed ? 'bg-accent' : ''}`}
+                    onClick={() => setShowEmbed(!showEmbed)}
+                    aria-label="Embed chart"
+                  >
+                    <Code className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Embed Chart</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={handleDownload}
+                  aria-label="Download chart data"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Download JSON</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -109,7 +194,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                 </PieChart>
               ) : (
                 <BarChart data={chartData}>
@@ -128,7 +213,7 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
                     stroke="hsl(var(--foreground))" // Explicitly set axis/tick color
                     tickMargin={8}
                   />
-                  <Tooltip
+                  <RechartsTooltip
                     cursor={false} // Keep cursor invisible for bar chart
                     content={<CustomTooltip />}
                   />
@@ -158,6 +243,30 @@ export function DynamicChart({ data, index = 0 }: DynamicChartProps) {
           </CardFooter>
         )}
       </Card>
+      {showEmbed && data.survey_Id && (
+        <div className="p-4 bg-background border-t border-border">
+          <label htmlFor={`embed-code-${data.survey_Id}`} className="block text-sm font-medium text-muted-foreground mb-1">Embed Code</label>
+          <div className="relative">
+            <textarea
+              id={`embed-code-${data.survey_Id}`}
+              readOnly
+              className="w-full p-2 border border-input rounded bg-background text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              rows={4}
+              value={embedCode}
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-1 right-1 h-7 w-7 text-muted-foreground hover:bg-muted"
+              onClick={handleCopyEmbed}
+              aria-label="Copy embed code"
+            >
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Copy and paste this code into your website.</p>
+        </div>
+      )}
     </motion.div>
   )
 }

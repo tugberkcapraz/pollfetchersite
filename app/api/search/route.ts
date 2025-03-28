@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
 export interface PollResult {
+  id: string;
   title: string;
   url: string;
   seendate: string;
@@ -31,17 +32,23 @@ export async function GET(request: NextRequest) {
 
   try {
     // Connect to the database and execute the vector search
-    const result = await pool.query('SELECT * FROM pollsearch2($1, 100)', [query]);
+    const result = await pool.query('SELECT * FROM pollsearcher($1, 100)', [query]);
     
     // Process the results
     const polls = result.rows.map((row: any) => {
       // Parse the JSON string in chartdata if it's a string
       let chartdata = row.chartdata;
       if (typeof chartdata === 'string') {
-        chartdata = JSON.parse(chartdata);
+        try {
+          chartdata = JSON.parse(chartdata);
+        } catch (e) {
+          console.error(`Failed to parse chartdata for poll id ${row.id}:`, e);
+          chartdata = {};
+        }
       }
       
       return {
+        id: row.id,
         title: row.title,
         url: row.url,
         seendate: row.seendate,
