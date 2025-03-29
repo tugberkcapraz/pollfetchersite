@@ -1,60 +1,29 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Send, Check } from "lucide-react"
-import { motion } from "framer-motion"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import ReportChat from "@/components/report-chat"
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react"; // Example loading spinner
 
 // Model types that can be selected
 type Model = 'azure' | 'gemini';
 
 export default function ReportPage() {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
   const [input, setInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState<Model>('azure');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<Model>('azure'); // Default to Azure
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Add click-away handler for dropdown
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    
-    // Add event listener when dropdown is open
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    // Clean up the event listener
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownOpen]);
+  const [error, setError] = useState<string | null>(null);
+  const [reportHtml, setReportHtml] = useState<string | null>(null); // State to hold the HTML report
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!input.trim()) return;
-    
-    const userMessage = input.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setInput('');
+    const userQuery = input.trim();
+    if (!userQuery) return;
+
     setIsLoading(true);
+    setError(null);
+    setReportHtml(null); // Clear previous report
 
     try {
       const response = await fetch('/api/report', {
@@ -62,139 +31,108 @@ export default function ReportPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          query: userMessage,
-          model: selectedModel // Include the selected model in the request
+        body: JSON.stringify({
+          query: userQuery,
+          model: selectedModel,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate report');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate report. Please check server logs.' }));
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.report }]);
-    } catch (error) {
-      console.error('Error generating report:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error while generating your report. Please try again.' 
-      }]);
+      
+      // Ensure the report content is a string
+      if (typeof data.report === 'string') {
+        setReportHtml(data.report);
+      } else {
+         throw new Error("Received invalid report format from server.");
+      }
+      setInput(''); // Clear input after successful generation
+
+    } catch (err: any) {
+      console.error('Error generating report:', err);
+      setError(err.message || 'An unknown error occurred while generating your report.');
+      setReportHtml(null); // Ensure no stale report is shown on error
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Toggle the dropdown menu
-  const toggleDropdown = () => {
-    setDropdownOpen(!dropdownOpen);
-  };
-
-  // Handle model selection
-  const selectModel = (model: Model) => {
-    setSelectedModel(model);
-    setDropdownOpen(false);
-  };
-
   return (
-    <>
-      <Navbar />
-      <div className="min-h-screen pt-32 pb-16">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="max-w-4xl mx-auto">
-            <motion.h1
-              className="text-3xl md:text-4xl font-display font-bold mb-6 px-1"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              Generate <span className="gradient-text">Survey Reports</span>
-            </motion.h1>
-            
-            <motion.p
-              className="text-lg mb-8 text-starlight-100"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              Ask a question about survey data and get a comprehensive report based on our database of polls.
-            </motion.p>
+    <div className="flex flex-col h-screen bg-gray-50 p-4 md:p-8">
+      {/* Header Area */}
+      <header className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Generate Poll Report</h1>
+        <p className="text-gray-600 mt-1">Enter your query below to generate a report based on relevant polls and articles.</p>
+      </header>
 
-            <div className="glass-panel p-6 rounded-xl mb-6">
-              {/* Model selection dropdown */}
-              <div className="flex justify-end mb-4">
-                <div className="relative" ref={dropdownRef}>
-                  <button 
-                    onClick={toggleDropdown}
-                    className="px-4 py-2 text-sm bg-elegant-blue-dark rounded-md border border-elegant-gold/20 flex items-center"
-                    disabled={isLoading}
-                  >
-                    <span>Model: </span>
-                    <span className="font-medium ml-1">
-                      {selectedModel === 'azure' ? 'Azure AI' : 'Gemini'}
-                    </span>
-                    <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-elegant-blue-dark border border-elegant-gold/20 z-50">
-                      <div className="py-1">
-                        <button
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-elegant-blue/50 flex items-center"
-                          onClick={() => selectModel('azure')}
-                        >
-                          {selectedModel === 'azure' && <Check className="h-4 w-4 mr-2" />}
-                          <span className={selectedModel === 'azure' ? 'ml-2' : 'ml-6'}>Azure AI</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-elegant-blue/50 flex items-center"
-                          onClick={() => selectModel('gemini')}
-                        >
-                          {selectedModel === 'gemini' && <Check className="h-4 w-4 mr-2" />}
-                          <span className={selectedModel === 'gemini' ? 'ml-2' : 'ml-6'}>Gemini</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <ReportChat 
-                messages={messages} 
-                isLoading={isLoading} 
-                messagesEndRef={messagesEndRef}
-              />
-              
-              <form onSubmit={handleSendMessage} className="mt-4">
-                <div className="relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-elegant-gold-dark via-elegant-gold to-elegant-gold-light rounded-lg blur opacity-30 transition-opacity duration-300"></div>
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      placeholder="Ask a question about survey data..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      disabled={isLoading}
-                      className="elegant-input h-14 pl-5 pr-32 rounded-lg text-lg w-full"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading || !input.trim()}
-                      className="absolute right-2 h-10 px-6 bg-gradient-to-r from-elegant-gold-dark to-elegant-gold rounded-md font-medium text-elegant-blue-dark transition-transform duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-                    >
-                      <Send className="w-5 h-5 mr-2 inline-block" />
-                      <span>Send</span>
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
+      {/* Input Form Area */}
+      <form onSubmit={handleSendMessage} className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a question about poll data (e.g., 'What is the latest opinion on climate change in Europe?')"
+            className="flex-grow resize-none text-base"
+            rows={3}
+            disabled={isLoading}
+          />
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+             <div className="w-full sm:w-auto">
+                <label htmlFor="model-select" className="text-sm font-medium text-gray-700 mb-1 block">AI Model</label>
+                <Select
+                  value={selectedModel}
+                  onValueChange={(value: Model) => setSelectedModel(value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="model-select" className="w-full sm:w-[120px]">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="azure">Azure</SelectItem>
+                    <SelectItem value="gemini">Gemini</SelectItem>
+                  </SelectContent>
+                </Select>
+             </div>
+            <Button type="submit" disabled={isLoading || !input.trim()} className="w-full sm:w-auto">
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isLoading ? 'Generating...' : 'Generate Report'}
+            </Button>
           </div>
         </div>
+      </form>
+
+      {/* Report Output Area */}
+      <div className="flex-grow bg-white p-4 md:p-6 rounded-lg shadow overflow-auto">
+        {isLoading && (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="ml-3 text-gray-600">Generating your report...</p>
+          </div>
+        )}
+        {error && (
+          <div className="text-center text-red-600 bg-red-50 p-4 rounded border border-red-200">
+            <h3 className="font-semibold mb-2">Error Generating Report</h3>
+            <p>{error}</p>
+          </div>
+        )}
+        {!isLoading && !error && reportHtml && (
+          // Render the HTML report using dangerouslySetInnerHTML
+          // Ensure your LLM prompt sanitizes output or trust the source.
+          <div
+             className="prose prose-lg max-w-none" // Using Tailwind Typography for basic styling
+             dangerouslySetInnerHTML={{ __html: reportHtml }}
+           />
+        )}
+        {!isLoading && !error && !reportHtml && (
+          <div className="text-center text-gray-500 pt-10">
+            <p>Your generated report will appear here.</p>
+          </div>
+        )}
       </div>
-      <Footer />
-    </>
-  )
+    </div>
+  );
 } 

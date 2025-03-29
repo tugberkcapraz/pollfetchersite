@@ -456,7 +456,7 @@ Your report MUST:
 1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
 2. PRIMARILY use information from the ARTICLE TEXTS.
 3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
-   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="600" height="400" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
+   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="900" height="800" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
    Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
 4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
 5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
