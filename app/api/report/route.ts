@@ -6,6 +6,7 @@ export type AIModel = 'azure' | 'gemini';
 
 // Type definitions for better type safety
 interface PollData {
+  id?: number | string;
   title?: string;
   url?: string;
   seendate?: string;
@@ -168,7 +169,7 @@ async function searchForPolls(origin: string, query: string): Promise<PollData[]
     try {
       // Connect to the database and execute the vector search directly
       // This is the same query used in the search API
-      const result = await pool.query('SELECT * FROM pollsearcher($1, 100)', [query]);
+      const result = await pool.query('SELECT id, title, url, seendate, chartdata, sourcecountry, score FROM pollsearcher($1, 100)', [query]);
       
       console.log(`Database returned ${result.rows.length} poll results`);
       
@@ -300,40 +301,45 @@ async function generateAzureReport(
   apiKey: string
 ): Promise<string> {
   try {
-    // Prepare poll metadata and article content
+    // Prepare poll metadata and article content, ensuring 'id' is included
     const { pollData, articleContent } = prepareReportData(query, articles, polls);
     
-    // Define prompts for Azure AI
-    const systemPrompt = "You are an intelligent assistant specialized in analyzing survey data and related articles to generate comprehensive reports. Follow the user's instructions precisely regarding source prioritization, formatting, and citation.";
+    // Define prompts for Azure AI - Updated for HTML and iFrames
+    const systemPrompt = "You are an intelligent assistant specialized in analyzing survey data and related articles to generate comprehensive reports in HTML format. Follow the user's instructions precisely regarding source prioritization, formatting, and chart embedding.";
     const userPrompt = `
 User question: "${query}"
 
-I need you to generate a report that answers this question primarily based on the ARTICLE TEXT below.
-The poll metadata is secondary and should only be used to supplement your analysis.
+I need you to generate a report in HTML format that answers this question primarily based on the ARTICLE TEXT below.
+The poll metadata is secondary and should only be used to supplement your analysis or embed relevant charts.
 
 ${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
 
-SECONDARY SOURCE - POLL METADATA (ONLY USE IF NEEDED):
-${JSON.stringify(pollData, null, 2)}
+SECONDARY SOURCE - POLL METADATA (USE FOR CONTEXT AND CHART EMBEDDING):
+${JSON.stringify(pollData, null, 2)} // Note: Each poll object now includes an 'id'.
 
 Your report MUST:
-1. PRIMARILY use information from the ARTICLE TEXTS
-2. Only reference the poll metadata when helpful. But when you are using the poll make sure that explain it well and in detail.
-3. Format your response in markdown with clear headers and sections
-4. Use numbered citation format - when referencing content from articles, add a numbered citation like [1], [2], etc.
-5. Include a "References" section at the end of the report with a numbered list of all sources used
-6. Be comprehensive but focused on answering the specific question
-7. Clearly state if the provided information is insufficient to fully answer the question
+1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
+2. PRIMARILY use information from the ARTICLE TEXTS.
+3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
+   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="600" height="400" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
+   Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
+4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
+5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
+6. Be comprehensive but focused on answering the specific question.
+7. Clearly state if the provided information is insufficient to fully answer the question.
+8. Ensure the final output is clean HTML.
 
-Example format for citations:
-"According to a recent survey, 64% of Americans support this policy [1]."
+Example citation link in text:
+<p>According to a recent survey, 64% of Americans support this policy <a href="https://example.com/article1">[1]</a>.</p>
 
-Then at the end have:
-"## References
-1. [Source Title or URL](actual URL)
-2. [Another Source](actual URL)"
+Example References section:
+<h2>References</h2>
+<ol>
+  <li><a href="https://example.com/article1">Source Title or URL 1</a></li>
+  <li><a href="https://example.com/article2">Source Title or URL 2</a></li>
+</ol>
 
-Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
+Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified iframe format. Do not generate information not contained in the sources.
 `;
 
     const messages = [
@@ -431,39 +437,47 @@ async function generateGeminiReport(
   apiKey: string
 ): Promise<string> {
   try {
-    // Prepare poll metadata and article content
+    // Prepare poll metadata and article content, ensuring 'id' is included
     const { pollData, articleContent } = prepareReportData(query, articles, polls);
     
-    // Create prompt for Gemini
+    // Create prompt for Gemini - Updated for HTML and iFrames
     const prompt = `
 User question: "${query}"
 
-I need you to generate a report that answers this question primarily based on the ARTICLE TEXT below.
-The poll metadata is secondary and should only be used to supplement your analysis.
+You are report generator for Pollfetcher.com, which is an AI powered survey data aggregator.
+You are given the user question and the system provied you with some articles as well as polls.
+
+Your job is to generate a report in HTML format that answers the user question based on the articles and the polls.
+
 
 ${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
 
-SECONDARY SOURCE - POLL METADATA (ONLY USE IF NEEDED):
-${JSON.stringify(pollData, null, 2)}
+SECONDARY SOURCE - POLL METADATA (USE FOR CONTEXT AND CHART EMBEDDING):
+${JSON.stringify(pollData, null, 2)} // Note: Each poll object now includes an 'id'.
 
 Your report MUST:
-1. PRIMARILY use information from the ARTICLE TEXTS
-2. Only reference the poll metadata when helpful. But when you are using the poll make sure that explain it well and in detail.
-3. Format your response in markdown with clear headers and sections
-4. Use numbered citation format - when referencing content from articles, add a numbered citation like [1], [2], etc.
-5. Include a "References" section at the end of the report with a numbered list of all sources used
-6. Be comprehensive but focused on answering the specific question
-7. Clearly state if the provided information is insufficient to fully answer the question
+1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
+2. You must cover many aspects of the question and enrich it with proper usage of the polls.
+3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
+   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="800" height="600" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
+   Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
+4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
+5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
+6. Be comprehensive but focused on answering the specific question.
+7. Clearly state if the provided information is insufficient to fully answer the question.
+8. Ensure the final output is clean HTML.
 
-Example format for citations:
-"According to a recent survey, 64% of Americans support this policy [1]."
+Example citation link in text:
+<p>According to a recent survey, 64% of Americans support this policy <a href="https://example.com/article1">[1]</a>.</p>
 
-Then at the end have:
-"## References
-1. [Source Title or URL](actual URL)
-2. [Another Source](actual URL)"
+Example References section:
+<h2>References</h2>
+<ol>
+  <li><a href="https://example.com/article1">Source Title or URL 1</a></li>
+  <li><a href="https://example.com/article2">Source Title or URL 2</a></li>
+</ol>
 
-Read the articles carefully and prioritize this content over the metadata. Do not generate information not contained in the sources.
+Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified iframe format. Do not generate information not contained in the sources.
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -559,8 +573,9 @@ Read the articles carefully and prioritize this content over the metadata. Do no
  * Helper function to prepare report data (common for both AI models)
  */
 function prepareReportData(query: string, articles: ArticleData[], polls: PollData[]) {
-  // Prepare poll metadata
+  // Prepare poll metadata, including the 'id'
   const pollData = polls.map(poll => ({
+    id: poll.id, // Include the poll id
     title: poll.title || poll.chartdata?.Title || "Untitled Poll",
     url: poll.url || "#",
     chartData: {
