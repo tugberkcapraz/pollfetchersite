@@ -444,8 +444,11 @@ async function generateGeminiReport(
     const prompt = `
 User question: "${query}"
 
-I need you to generate a report in HTML format that answers this question primarily based on the ARTICLE TEXT below.
-The poll metadata is secondary and should only be used to supplement your analysis or embed relevant charts.
+You are report generator for Pollfetcher.com, which is an AI powered survey data aggregator.
+You are given the user question and the system provied you with some articles as well as polls.
+
+Your job is to generate a report in HTML format that answers the user question based on the articles and the polls.
+
 
 ${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
 
@@ -454,9 +457,9 @@ ${JSON.stringify(pollData, null, 2)} // Note: Each poll object now includes an '
 
 Your report MUST:
 1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
-2. PRIMARILY use information from the ARTICLE TEXTS.
+2. You must cover many aspects of the question and enrich it with proper usage of the polls.
 3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
-   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="900" height="800" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
+   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="800" height="600" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
    Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
 4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
 5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
