@@ -9,27 +9,29 @@ const roadmapData = [
     quarter: "2025 Q1",
     items: [
       { name: "AI-Powered Poll Search", status: "checked" },
-      { name: "Historical Archive until 2023", status: "checked" },
-      { name: "Report Generation", status: "checked" },
+      { name: "Historical Archive (Up to 2023)", status: "checked" },
+      { name: "AI Powered Report Generation Grounded with Polls", status: "checked" },
       { name: "Platform Metrics", status: "checked" },
     ],
   },
   {
     quarter: "2025 Q2",
     items: [
-      { name: "Historical Archive until 2017", status: "upcoming" },
-      { name: "Poll Search API Endpoint", status: "upcoming" },
-      { name: "Report Generation API Endpoint", status: "upcoming" },
-      { name: "Enhanced Poll parsing with much capable LLM", status: "upcoming" },
-      { name: "Improved data quality pipeline", status: "upcoming" },
+      { name: "Historical Archive Expansion (Up to 2017)", status: "upcoming" },
+      { name: "Additional Chart Types (Pie, Scatter, Line)", status: "upcoming" },
+      { name: "Poll Search API Release", status: "upcoming" },
+      { name: "Report Generation API Release", status: "upcoming" },
+      { name: "Enhanced Poll Parsing (LLM Upgrade)", status: "upcoming" },
+      { name: "Data Quality Pipeline Refinement", status: "upcoming" },
+      { name: "Customizable Chart Options for Brands", status: "upcoming" },
     ],
   },
   {
     quarter: "2025 Q3",
     items: [
-      { name: "Wordpress integration", status: "upcoming" },
-      { name: "Chrome Extension", status: "upcoming" },
-      { name: "Ghost integration", status: "upcoming" },
+      { name: "WordPress Integration", status: "upcoming" },
+      { name: "Chrome Extension Release", status: "upcoming" },
+      { name: "Ghost CMS Integration", status: "upcoming" },
     ],
   },
 ]
@@ -119,16 +121,13 @@ export function RoadmapSection() {
                     } border-border rotate-45 hidden md:block`}
                   ></div>
 
-                  {/* Timeline Dot */}
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-secondary border-4 border-background hidden md:block"></div>
-
                   <ul className="space-y-3">
                     {phase.items.map((item) => (
                       <li key={item.name} className="flex items-start space-x-3">
                         {item.status === "checked" ? (
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
+                          <CheckCircle className="w-5 h-5 text-accent-light flex-shrink-0 mt-1" />
                         ) : (
-                          <Circle className="w-5 h-5 text-secondary/50 flex-shrink-0 mt-1" />
+                          <Circle className="w-5 h-5 text-muted-foreground/70 flex-shrink-0 mt-1" />
                         )}
                         <span className="text-foreground">{item.name}</span>
                       </li>
