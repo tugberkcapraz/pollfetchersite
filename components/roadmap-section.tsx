@@ -93,34 +93,41 @@ export function RoadmapSection() {
           {roadmapData.map((phase, index) => (
             <motion.div
               key={phase.quarter}
-              className={`mb-12 flex ${
-                index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
-              } md:items-start`}
+              className="relative md:mb-16 mb-12"
               variants={itemVariants}
             >
-              {/* Quarter Title */}
-              <div className="w-full md:w-1/2 px-4 md:px-8 py-4">
-                <div className={`md:${index % 2 === 0 ? "text-right" : "text-left"}`}>
-                  <h3 className="text-2xl font-display font-semibold text-primary mb-2">
-                    {phase.quarter}
-                  </h3>
-                </div>
-              </div>
+              {/* Timeline Dot (Positioned on the central line) */}
+              <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-secondary border-4 border-background hidden md:block z-10"></div>
 
-              {/* Items Card */}
-              <div className="w-full md:w-1/2 px-4 md:px-8 py-4">
+              {/* Content Container: Holds Title + Card */}
+              <div
+                className={`w-full md:w-1/2 ${
+                  index % 2 === 0
+                    ? "md:ml-auto md:pl-12"
+                    : "md:mr-auto md:pr-12"
+                }`}
+              >
+                {/* Quarter Title */}
+                <h3
+                  className={`text-2xl font-display font-semibold text-primary mb-4 ${
+                    index % 2 === 0 ? "md:text-left" : "md:text-right"
+                  }`}
+                >
+                  {phase.quarter}
+                </h3>
+
+                {/* Items Card */}
                 <div className="bg-card p-6 rounded-lg shadow-md border border-border relative">
                   {/* Card Pointer */}
                   <div
-                    className={`absolute top-6 ${
-                      index % 2 === 0 ? "-left-2.5" : "-right-2.5"
-                    } transform ${
-                      index % 2 === 0 ? "-translate-y-1/2" : "-translate-y-1/2"
-                    } w-5 h-5 bg-card border ${
-                      index % 2 === 0 ? "border-r-0 border-b-0" : "border-l-0 border-t-0"
-                    } border-border rotate-45 hidden md:block`}
+                    className={`absolute top-6 hidden md:block w-4 h-4 bg-card border border-border rotate-45 ${
+                      index % 2 === 0
+                        ? "-left-2 border-r-0 border-b-0"
+                        : "-right-2 border-l-0 border-t-0"
+                    }`}
                   ></div>
 
+                  {/* List of Items */}
                   <ul className="space-y-3">
                     {phase.items.map((item) => (
                       <li key={item.name} className="flex items-start space-x-3">
@@ -133,12 +140,12 @@ export function RoadmapSection() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              </div>
+                </div> {/* End Card */}
+              </div> {/* End Content Container */}
             </motion.div>
           ))}
-        </motion.div>
-      </div>
+        </motion.div> {/* End Timeline Container */}
+      </div> {/* End Container */}
     </section>
   )
-} 
+}
