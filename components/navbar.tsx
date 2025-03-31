@@ -26,7 +26,6 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Generate Reports", path: "/report" },
-    { name: "Curated Articles", path: "/articles" },
     { name: "Platform Metrics", path: "/metrics" },
   ]
 
