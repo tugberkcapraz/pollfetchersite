@@ -8,12 +8,13 @@ import { Loader2 } from "lucide-react"; // Example loading spinner
 import Head from 'next/head'; // Import Head for adding styles
 import { PageContainer } from "@/components/page-container";
 
-// Model types that can be selected
-type Model = 'azure' | 'gemini';
+// Define the specific Gemini models available
+type Model = 'gemini-2.0-flash' | 'gemini-2.0-flash-lite';
 
 export default function ReportPage() {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState<Model>('azure');
+  // Default to gemini-1.5-flash
+  const [selectedModel, setSelectedModel] = useState<Model>('gemini-2.0-flash');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reportHtml, setReportHtml] = useState<string | null>(null); // State to hold the HTML report
@@ -148,15 +149,17 @@ export default function ReportPage() {
                   <label htmlFor="model-select" className="text-sm font-medium text-gray-700 mb-1 block">AI Model</label>
                   <Select
                     value={selectedModel}
-                    onValueChange={(value: Model) => setSelectedModel(value)}
+                    // Ensure the value passed is one of the allowed Model types
+                    onValueChange={(value: string) => setSelectedModel(value as Model)}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="model-select" className="w-full sm:w-[120px]">
+                    <SelectTrigger id="model-select" className="w-full sm:w-[180px]"> {/* Adjusted width for longer names */}
                       <SelectValue placeholder="Select model" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="azure">Azure</SelectItem>
-                      <SelectItem value="gemini">Gemini</SelectItem>
+                      {/* Update SelectItems to use specific Gemini model names */}
+                      <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                      <SelectItem value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</SelectItem>
                     </SelectContent>
                   </Select>
                </div>
