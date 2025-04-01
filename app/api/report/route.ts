@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
-// Supported AI models
-export type AIModel = 'azure' | 'gemini';
+  // Supported AI models - updated to specific Gemini models
+export type AIModel = 'gemini-2.0-flash' | 'gemini-2.0-flash-lite';
+const ALLOWED_MODELS: AIModel[] = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
 // Type definitions for better type safety
 interface PollData {
@@ -38,7 +39,7 @@ const RETRY_DELAY_MS = 1000;
 
 /**
  * POST handler for the report endpoint
- * Takes a user query, searches for relevant polls, and generates a comprehensive report
+ * Takes a user query, searches for relevant polls, and generates a comprehensive report using Gemini
  */
 export async function POST(request: NextRequest) {
   // Setup comprehensive logging for production debugging
@@ -47,48 +48,35 @@ export async function POST(request: NextRequest) {
   try {
     // Parse the request
     const body = await request.json();
-    const { query, model = 'azure' } = body; // Default to Azure if no model specified
+    // Default to gemini-1.5-flash if no model specified or invalid model
+    const requestedModel = body.model;
+    const model: AIModel = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : 'gemini-2.0-flash';
     
     console.log('Environment check:', {
       nodeEnv: process.env.NODE_ENV,
       model: model,
-      hasAzureEndpoint: model === 'azure' ? !!process.env.AZURE_INFERENCE_SDK_ENDPOINT : undefined,
-      hasAzureKey: model === 'azure' ? !!process.env.AZURE_INFERENCE_SDK_KEY?.substring(0, 3) + '...' : undefined,
-      hasGeminiKey: model === 'gemini' ? !!process.env.GEMINI_API_KEY?.substring(0, 3) + '...' : undefined,
+      hasGeminiKey: !!process.env.GEMINI_API_KEY?.substring(0, 3) + '...',
     });
     
-    // Validate model parameter
-    if (!['azure', 'gemini'].includes(model)) {
+    // Validate model parameter (redundant with default but good practice)
+    if (!ALLOWED_MODELS.includes(model)) {
       return NextResponse.json(
-        { error: 'Invalid model parameter. Supported values: azure, gemini' },
+        { error: `Invalid model parameter. Supported values: ${ALLOWED_MODELS.join(', ')}` },
         { status: 400 }
       );
     }
     
-    // Validate environment variables based on selected model
-    if (model === 'azure') {
-      const endpoint = process.env.AZURE_INFERENCE_SDK_ENDPOINT;
-      const key = process.env.AZURE_INFERENCE_SDK_KEY;
-      
-      if (!endpoint || !key) {
-        console.error('Azure AI Inference environment variables are missing.');
-        return NextResponse.json(
-          { error: 'Server configuration error: Missing Azure AI credentials.' },
-          { status: 500 }
-        );
-      }
-    } else if (model === 'gemini') {
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        console.error('Gemini API key is missing.');
-        return NextResponse.json(
-          { error: 'Server configuration error: Missing Gemini API key.' },
-          { status: 500 }
-        );
-      }
+    // Validate Gemini environment variable
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('Gemini API key is missing.');
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing Gemini API key.' },
+        { status: 500 }
+      );
     }
     
+    const { query } = body;
     if (!query || typeof query !== 'string') {
       return NextResponse.json(
         { error: 'Query parameter is required and must be a string' },
@@ -111,26 +99,11 @@ export async function POST(request: NextRequest) {
     // Step 2: Extract URLs from polls and retrieve article content
     const relevantUrls = extractValidUrls(polls);
     
-    if (relevantUrls.length === 0) {
-      console.log('No valid URLs found in poll results');
-      return NextResponse.json({
-        report: "I found some survey data, but couldn't retrieve associated articles. Generating a report based on available metadata."
-      });
-    }
+    // Step 3: Retrieve article text for the selected URLs (handle case where no URLs found)
+    const articles = relevantUrls.length > 0 ? await retrieveArticleText(relevantUrls) : [];
     
-    // Step 3: Retrieve article text for the selected URLs
-    const articles = await retrieveArticleText(relevantUrls);
-    
-    // Step 4: Generate the report using selected model
-    let report;
-    if (model === 'azure') {
-      const endpoint = process.env.AZURE_INFERENCE_SDK_ENDPOINT!;
-      const key = process.env.AZURE_INFERENCE_SDK_KEY!;
-      report = await generateAzureReport(query, articles, polls, endpoint, key);
-    } else {
-      const apiKey = process.env.GEMINI_API_KEY!;
-      report = await generateGeminiReport(query, articles, polls, apiKey);
-    }
+    // Step 4: Generate the report using the selected Gemini model
+    const report = await generateGeminiReport(query, articles, polls, apiKey, model); // Pass the specific model name
     
     // Step 5: Return the final report
     console.log(`Successfully generated report using ${model} for query:`, query);
@@ -169,7 +142,7 @@ async function searchForPolls(origin: string, query: string): Promise<PollData[]
     try {
       // Connect to the database and execute the vector search directly
       // This is the same query used in the search API
-      const result = await pool.query('SELECT id, title, url, seendate, chartdata, sourcecountry, score FROM pollsearcher($1, 100)', [query]);
+      const result = await pool.query('SELECT id, title, url, seendate, chartdata, sourcecountry, score FROM pollsearcher($1, 10)', [query]);
       
       console.log(`Database returned ${result.rows.length} poll results`);
       
@@ -291,150 +264,14 @@ async function retrieveArticleText(urls: string[]): Promise<ArticleData[]> {
 }
 
 /**
- * Generate a comprehensive report using Azure AI
- */
-async function generateAzureReport(
-  query: string,
-  articles: ArticleData[],
-  polls: PollData[],
-  endpoint: string,
-  apiKey: string
-): Promise<string> {
-  try {
-    // Prepare poll metadata and article content, ensuring 'id' is included
-    const { pollData, articleContent } = prepareReportData(query, articles, polls);
-    
-    // Define prompts for Azure AI - Updated for HTML and iFrames
-    const systemPrompt = "You are an intelligent assistant specialized in analyzing survey data and related articles to generate comprehensive reports in HTML format. Follow the user's instructions precisely regarding source prioritization, formatting, and chart embedding.";
-    const userPrompt = `
-User question: "${query}"
-
-I need you to generate a report in HTML format that answers this question primarily based on the ARTICLE TEXT below.
-The poll metadata is secondary and should only be used to supplement your analysis or embed relevant charts.
-
-${articleContent ? `PRIMARY SOURCE - FULL ARTICLE TEXTS:\n${articleContent}` : 'WARNING: No article text could be retrieved. Using only metadata.'}
-
-SECONDARY SOURCE - POLL METADATA (USE FOR CONTEXT AND CHART EMBEDDING):
-${JSON.stringify(pollData, null, 2)} // Note: Each poll object now includes an 'id'.
-
-Your report MUST:
-1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
-2. PRIMARILY use information from the ARTICLE TEXTS.
-3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
-   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="600" height="400" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
-   Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
-4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
-5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
-6. Be comprehensive but focused on answering the specific question.
-7. Clearly state if the provided information is insufficient to fully answer the question.
-8. Ensure the final output is clean HTML.
-
-Example citation link in text:
-<p>According to a recent survey, 64% of Americans support this policy <a href="https://example.com/article1">[1]</a>.</p>
-
-Example References section:
-<h2>References</h2>
-<ol>
-  <li><a href="https://example.com/article1">Source Title or URL 1</a></li>
-  <li><a href="https://example.com/article2">Source Title or URL 2</a></li>
-</ol>
-
-Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified iframe format. Do not generate information not contained in the sources.
-`;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ];
-
-    // Ensure the endpoint includes the "/chat/completions" path.
-    const fixedEndpoint = endpoint.endsWith('/chat/completions')
-      ? endpoint
-      : `${endpoint}/chat/completions`;
-    const url = `${fixedEndpoint}?api-version=2024-05-01-preview`;
-    console.log(`Attempting to call Azure AI at: ${url}`);
-
-    // Use fetch API with retry logic
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`Retry attempt ${attempt} for Azure AI call`);
-          // Add delay between retries
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
-        }
-        
-        // Set up request with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': apiKey
-          },
-          body: JSON.stringify({
-            messages: messages,
-            max_tokens: 4000,
-            model: "DeepSeek-V3"
-          }),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Azure AI API error (${response.status}):`, errorText);
-          
-          // For 429 (rate limit) errors, retry
-          if (response.status === 429) {
-            lastError = new Error(`Rate limit exceeded: ${errorText}`);
-            continue; // Try again
-          }
-          
-          throw new Error(`Azure AI API returned status ${response.status}: ${errorText}`);
-        }
-        
-        const responseData = await response.json();
-        
-        if (!responseData?.choices?.[0]?.message?.content) {
-          console.error('Unexpected Azure AI response structure:', JSON.stringify(responseData).substring(0, 200));
-          throw new Error('Unexpected response format from Azure AI');
-        }
-        
-        return responseData.choices[0].message.content;
-      } catch (error) {
-        console.error(`Azure AI call attempt ${attempt + 1} failed:`, error);
-        lastError = error instanceof Error ? error : new Error(String(error));
-        
-        // Don't retry if it's an abort error (timeout)
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error('Azure AI request timed out after ' + (API_TIMEOUT_MS / 1000) + ' seconds');
-        }
-      }
-    }
-    
-    // If we get here, all retries failed
-    throw lastError || new Error('Failed to call Azure AI after multiple attempts');
-  } catch (error) {
-    console.error('Error in Azure AI report generation:', error);
-    return `I encountered an error while analyzing the data and generating your report. ${
-      error instanceof Error ? `Details: ${error.message}` : ''
-    }`;
-  }
-}
-
-/**
  * Generate a comprehensive report using Gemini API
  */
 async function generateGeminiReport(
   query: string,
   articles: ArticleData[],
   polls: PollData[],
-  apiKey: string
+  apiKey: string,
+  modelName: AIModel // Accept the specific model name
 ): Promise<string> {
   try {
     // Prepare poll metadata and article content, ensuring 'id' is included
@@ -480,8 +317,9 @@ Example References section:
 Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified iframe format. Do not generate information not contained in the sources.
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    console.log('Attempting to call Gemini API');
+    // Use the modelName parameter in the URL
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    console.log(`Attempting to call Gemini API (${modelName})`);
     
     // Use fetch API with retry logic
     let lastError: Error | null = null;
@@ -489,7 +327,7 @@ Read the articles carefully and prioritize this content. Embed charts from the m
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
-          console.log(`Retry attempt ${attempt} for Gemini API call`);
+          console.log(`Retry attempt ${attempt} for Gemini API call (${modelName})`);
           // Add delay between retries
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
         }
@@ -519,7 +357,7 @@ Read the articles carefully and prioritize this content. Embed charts from the m
               topK: 40,
               topP: 0.95,
               maxOutputTokens: 8192,
-              responseMimeType: "text/plain"
+              responseMimeType: "text/plain" // Changed back to text/plain as it's more common for Gemini
             }
           }),
           signal: controller.signal
@@ -529,7 +367,7 @@ Read the articles carefully and prioritize this content. Embed charts from the m
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`Gemini API error (${response.status}):`, errorText);
+          console.error(`Gemini API error (${response.status}, Model: ${modelName}):`, errorText);
           
           // For 429 (rate limit) errors, retry
           if (response.status === 429) {
@@ -542,27 +380,44 @@ Read the articles carefully and prioritize this content. Embed charts from the m
         
         const responseData = await response.json();
         
+        // Adjusted check for Gemini response structure
         if (!responseData?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          console.error('Unexpected Gemini API response structure:', JSON.stringify(responseData).substring(0, 200));
+           // Log potential safety rating issues
+           if (responseData?.candidates?.[0]?.finishReason === 'SAFETY') {
+             console.error('Gemini API response blocked due to safety settings:', JSON.stringify(responseData.candidates[0].safetyRatings));
+             throw new Error('Gemini API response blocked due to safety settings. Check the prompt or content.');
+           }
+           // Log if content is missing for other reasons
+           if (!responseData?.candidates?.[0]?.content) {
+                console.error('Gemini API response missing content block:', JSON.stringify(responseData).substring(0, 500));
+                throw new Error('Gemini API response missing content block.');
+           }
+           // Log if parts array is missing or empty
+            if (!responseData?.candidates?.[0]?.content?.parts || responseData.candidates[0].content.parts.length === 0) {
+                console.error('Gemini API response missing "parts" array:', JSON.stringify(responseData.candidates[0].content).substring(0, 500));
+                throw new Error('Gemini API response missing "parts" array.');
+            }
+          // General structure error
+          console.error(`Unexpected Gemini API response structure (Model: ${modelName}):`, JSON.stringify(responseData).substring(0, 500));
           throw new Error('Unexpected response format from Gemini API');
         }
         
         return responseData.candidates[0].content.parts[0].text;
       } catch (error) {
-        console.error(`Gemini API call attempt ${attempt + 1} failed:`, error);
+        console.error(`Gemini API call attempt ${attempt + 1} failed (Model: ${modelName}):`, error);
         lastError = error instanceof Error ? error : new Error(String(error));
         
         // Don't retry if it's an abort error (timeout)
         if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error('Gemini API request timed out after ' + (API_TIMEOUT_MS / 1000) + ' seconds');
+          throw new Error(`Gemini API request timed out after ${API_TIMEOUT_MS / 1000} seconds`);
         }
       }
     }
     
     // If we get here, all retries failed
-    throw lastError || new Error('Failed to call Gemini API after multiple attempts');
+    throw lastError || new Error(`Failed to call Gemini API (${modelName}) after multiple attempts`);
   } catch (error) {
-    console.error('Error in Gemini report generation:', error);
+    console.error(`Error in Gemini report generation (Model: ${modelName}):`, error);
     return `I encountered an error while analyzing the data and generating your report. ${
       error instanceof Error ? `Details: ${error.message}` : ''
     }`;
