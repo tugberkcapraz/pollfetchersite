@@ -275,9 +275,19 @@ async function generateGeminiReport(
 ): Promise<string> {
   try {
     // Prepare poll metadata and article content, ensuring 'id' is included
+    // The pollData includes id and title needed for iframe generation later
     const { pollData, articleContent } = prepareReportData(query, articles, polls);
-    
-    // Create prompt for Gemini - Updated for HTML and iFrames
+
+    // Create a map of poll IDs to titles for easy lookup during post-processing
+    const pollTitleMap = new Map<string, string>();
+    pollData.forEach(poll => {
+      if (poll.id) {
+        // Ensure id is treated as string for consistency
+        pollTitleMap.set(String(poll.id), poll.title || "Poll Chart");
+      }
+    });
+
+    // Create prompt for Gemini - Updated instructions for chart placeholders
     const prompt = `
 User question: "${query}"
 
@@ -295,17 +305,20 @@ ${JSON.stringify(pollData, null, 2)} // Note: Each poll object now includes an '
 Your report MUST:
 1. Be formatted as a valid HTML document fragment (e.g., use <p>, <h1>, <h2>, <ul>, <li> tags). Do not include <html>, <head>, or <body> tags.
 2. You must cover many aspects of the question and enrich it with proper usage of the polls.
-3. When referencing specific poll data points or charts from the metadata, embed the chart using an iframe like this:
-   <iframe src="https://pollfetcher.com/embed/{poll_id}" width="800" height="600" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="{poll_title}"></iframe>
-   Replace {poll_id} with the actual 'id' from the metadata and {poll_title} with the poll's title. Embed charts thoughtfully where they support the narrative.
+3. When you want to reference and display a specific poll chart from the metadata, DO NOT generate an iframe. Instead, insert a placeholder in the format: [CHART:{poll_id}]
+   Replace {poll_id} with the actual 'id' from the metadata object corresponding to the chart you want to embed. Embed charts thoughtfully where they support the narrative.
+   Example: If you want to show the chart for the poll with id '123', you would write: [CHART:123]
 4. Use hyperlinks for citations - when referencing content from articles, link directly to the source URL provided in the article content header (e.g., <a href="SOURCE_URL">[1]</a>).
 5. Include a "References" section at the end of the report (e.g., using <h2>References</h2> and an ordered list <ol>) with numbered links to all sources used (article URLs).
 6. Be comprehensive but focused on answering the specific question.
 7. Clearly state if the provided information is insufficient to fully answer the question.
-8. Ensure the final output is clean HTML.
+8. Ensure the final output is clean HTML with the [CHART:{poll_id}] placeholders where appropriate.
 
 Example citation link in text:
 <p>According to a recent survey, 64% of Americans support this policy <a href="https://example.com/article1">[1]</a>.</p>
+
+Example of embedding a chart placeholder in text:
+<p>The trend over the past year is illustrated below: [CHART:456]</p >
 
 Example References section:
 <h2>References</h2>
@@ -314,16 +327,17 @@ Example References section:
   <li><a href="https://example.com/article2">Source Title or URL 2</a></li>
 </ol>
 
-Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified iframe format. Do not generate information not contained in the sources.
+Read the articles carefully and prioritize this content. Embed charts from the metadata where relevant using the specified [CHART:{poll_id}] format. Do not generate information not contained in the sources.
 `;
 
     // Use the modelName parameter in the URL
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     console.log(`Attempting to call Gemini API (${modelName})`);
-    
+
     // Use fetch API with retry logic
     let lastError: Error | null = null;
-    
+    let responseText = ''; // Variable to hold the raw response text
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
@@ -331,11 +345,11 @@ Read the articles carefully and prioritize this content. Embed charts from the m
           // Add delay between retries
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
         }
-        
+
         // Set up request with timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-        
+
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -357,29 +371,29 @@ Read the articles carefully and prioritize this content. Embed charts from the m
               topK: 40,
               topP: 0.95,
               maxOutputTokens: 8192,
-              responseMimeType: "text/plain" // Changed back to text/plain as it's more common for Gemini
+              responseMimeType: "text/plain"
             }
           }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`Gemini API error (${response.status}, Model: ${modelName}):`, errorText);
-          
+
           // For 429 (rate limit) errors, retry
           if (response.status === 429) {
             lastError = new Error(`Rate limit exceeded: ${errorText}`);
             continue; // Try again
           }
-          
+
           throw new Error(`Gemini API returned status ${response.status}: ${errorText}`);
         }
-        
+
         const responseData = await response.json();
-        
+
         // Adjusted check for Gemini response structure
         if (!responseData?.candidates?.[0]?.content?.parts?.[0]?.text) {
            // Log potential safety rating issues
@@ -401,21 +415,43 @@ Read the articles carefully and prioritize this content. Embed charts from the m
           console.error(`Unexpected Gemini API response structure (Model: ${modelName}):`, JSON.stringify(responseData).substring(0, 500));
           throw new Error('Unexpected response format from Gemini API');
         }
-        
-        return responseData.candidates[0].content.parts[0].text;
+
+        responseText = responseData.candidates[0].content.parts[0].text;
+        break; // Exit loop on success
       } catch (error) {
         console.error(`Gemini API call attempt ${attempt + 1} failed (Model: ${modelName}):`, error);
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Don't retry if it's an abort error (timeout)
         if (error instanceof DOMException && error.name === 'AbortError') {
           throw new Error(`Gemini API request timed out after ${API_TIMEOUT_MS / 1000} seconds`);
         }
+
+        // If this was the last attempt, rethrow the error
+        if (attempt === MAX_RETRIES) {
+             throw lastError || new Error(`Failed to call Gemini API (${modelName}) after multiple attempts`);
+        }
       }
     }
-    
-    // If we get here, all retries failed
-    throw lastError || new Error(`Failed to call Gemini API (${modelName}) after multiple attempts`);
+
+    // If responseText is empty after retries, something went wrong
+    if (!responseText) {
+        throw lastError || new Error(`Failed to get valid response from Gemini API (${modelName}) after multiple attempts`);
+    }
+
+    // Post-process the responseText to replace placeholders with iframes
+    const processedReport = responseText.replace(
+      /\[CHART:([\w-]+)\]/g, // Regex to find [CHART:id] - allows alphanumeric and hyphens in ID
+      (match, pollId) => {
+        const pollTitle = pollTitleMap.get(String(pollId)) || "Poll Chart"; // Get title from map
+        console.log(`Replacing placeholder: ${match} with iframe for poll ID: ${pollId}`);
+        // Return the iframe HTML
+        return `<iframe src="https://pollfetcher.com/embed/${pollId}" width="800" height="600" frameborder="0" scrolling="no" style="border: 1px solid #e2e8f0; border-radius: 8px;" title="${pollTitle}"></iframe>`;
+      }
+    );
+
+    return processedReport; // Return the processed report with iframes
+
   } catch (error) {
     console.error(`Error in Gemini report generation (Model: ${modelName}):`, error);
     return `I encountered an error while analyzing the data and generating your report. ${
@@ -428,10 +464,10 @@ Read the articles carefully and prioritize this content. Embed charts from the m
  * Helper function to prepare report data (common for both AI models)
  */
 function prepareReportData(query: string, articles: ArticleData[], polls: PollData[]) {
-  // Prepare poll metadata, including the 'id'
+  // Prepare poll metadata, including the 'id' and 'title'
   const pollData = polls.map(poll => ({
-    id: poll.id, // Include the poll id
-    title: poll.title || poll.chartdata?.Title || "Untitled Poll",
+    id: poll.id, // Ensure the poll id is included
+    title: poll.title || poll.chartdata?.Title || "Untitled Poll", // Ensure title is included
     url: poll.url || "#",
     chartData: {
       xValues: poll.chartdata?.XValue || [],
@@ -444,16 +480,16 @@ function prepareReportData(query: string, articles: ArticleData[], polls: PollDa
     year: poll.chartdata?.SurveyYear || "",
     country: poll.sourcecountry || ""
   }));
-  
+
   // Prepare article content (with length limits)
   const articleContent = articles.map(article => {
-    const text = article.text || ""; 
-    const truncatedText = text.length > 4000 
-      ? text.substring(0, 4000) + "... [truncated]" 
+    const text = article.text || "";
+    const truncatedText = text.length > 4000
+      ? text.substring(0, 4000) + "... [truncated]"
       : text;
-    
+
     return truncatedText ? `SOURCE: ${article.url}\n\n${truncatedText}\n\n---\n\n` : '';
   }).filter(content => content).join("");
-  
+
   return { pollData, articleContent };
 }
