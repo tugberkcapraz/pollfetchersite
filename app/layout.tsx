@@ -5,6 +5,7 @@ import { Inter, Playfair_Display } from "next/font/google"
 import { NoiseOverlay } from "@/components/noise-overlay"
 import { Navbar } from "@/components/navbar"
 import { FontLoadingHandler } from "@/components/font-loading-handler"
+import { GoogleAnalytics } from "@/components/google-analytics"
 
 // Fonts
 const inter = Inter({
@@ -32,6 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} font-sans`}>
+      <GoogleAnalytics />
       <body className="antialiased">
         <FontLoadingHandler />
         <NoiseOverlay />
